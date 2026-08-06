@@ -1,10 +1,10 @@
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ExpenseBase(BaseModel):
     category: str
-    amount: float
+    amount: float = Field(..., gt=0)
     description: str | None = None
 
 

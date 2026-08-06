@@ -1,9 +1,9 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class BudgetBase(BaseModel):
     category: str
-    monthly_limit: float
+    monthly_limit: float = Field(..., gt=0)
     month_year: str
 
 

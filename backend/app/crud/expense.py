@@ -5,14 +5,24 @@ from app.schemas.expense import ExpenseCreate
 
 
 def create_expense(db: Session, user_id: int, expense_in: ExpenseCreate):
-    expense = Expense(user_id=user_id, **expense_in.model_dump())
+    expense = Expense(
+        user_id=user_id,
+        **expense_in.model_dump()
+    )
+
     db.add(expense)
     db.commit()
     db.refresh(expense)
+
     return expense
 
 
-def get_expenses_by_user(db: Session, user_id: int, skip: int = 0, limit: int = 100):
+def get_expenses_by_user(
+    db: Session,
+    user_id: int,
+    skip: int = 0,
+    limit: int = 100
+):
     return (
         db.query(Expense)
         .filter(Expense.user_id == user_id)
@@ -22,7 +32,11 @@ def get_expenses_by_user(db: Session, user_id: int, skip: int = 0, limit: int = 
     )
 
 
-def get_expense(db: Session, expense_id: int, user_id: int):
+def get_expense(
+    db: Session,
+    expense_id: int,
+    user_id: int
+):
     return (
         db.query(Expense)
         .filter(
@@ -44,8 +58,10 @@ def update_expense(
     if not expense:
         return None
 
-    for field, value in expense_in.model_dump().items():
-        setattr(expense, field, value)
+    update_data = expense_in.model_dump()
+
+    for key, value in update_data.items():
+        setattr(expense, key, value)
 
     db.commit()
     db.refresh(expense)
@@ -53,7 +69,11 @@ def update_expense(
     return expense
 
 
-def delete_expense(db: Session, expense_id: int, user_id: int):
+def delete_expense(
+    db: Session,
+    expense_id: int,
+    user_id: int
+):
     expense = get_expense(db, expense_id, user_id)
 
     if not expense:

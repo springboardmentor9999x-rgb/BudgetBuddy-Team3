@@ -5,14 +5,24 @@ from app.schemas.budget import BudgetCreate
 
 
 def create_budget(db: Session, user_id: int, budget_in: BudgetCreate):
-    budget = Budget(user_id=user_id, **budget_in.model_dump())
+    budget = Budget(
+        user_id=user_id,
+        **budget_in.model_dump()
+    )
+
     db.add(budget)
     db.commit()
     db.refresh(budget)
+
     return budget
 
 
-def get_budgets_by_user(db: Session, user_id: int, skip: int = 0, limit: int = 100):
+def get_budgets_by_user(
+    db: Session,
+    user_id: int,
+    skip: int = 0,
+    limit: int = 100
+):
     return (
         db.query(Budget)
         .filter(Budget.user_id == user_id)
@@ -22,7 +32,11 @@ def get_budgets_by_user(db: Session, user_id: int, skip: int = 0, limit: int = 1
     )
 
 
-def get_budget(db: Session, budget_id: int, user_id: int):
+def get_budget(
+    db: Session,
+    budget_id: int,
+    user_id: int
+):
     return (
         db.query(Budget)
         .filter(
@@ -44,8 +58,10 @@ def update_budget(
     if not budget:
         return None
 
-    for field, value in budget_in.model_dump().items():
-        setattr(budget, field, value)
+    update_data = budget_in.model_dump()
+
+    for key, value in update_data.items():
+        setattr(budget, key, value)
 
     db.commit()
     db.refresh(budget)
@@ -53,7 +69,11 @@ def update_budget(
     return budget
 
 
-def delete_budget(db: Session, budget_id: int, user_id: int):
+def delete_budget(
+    db: Session,
+    budget_id: int,
+    user_id: int
+):
     budget = get_budget(db, budget_id, user_id)
 
     if not budget:
