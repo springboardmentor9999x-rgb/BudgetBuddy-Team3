@@ -4,17 +4,17 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.user import User
 
-from app.schemas.income import (
-    IncomeCreate,
-    IncomeOut
+from app.schemas.bank_account import (
+    BankAccountCreate,
+    BankAccountOut
 )
 
-from app.crud.income import (
-    create_income,
-    get_incomes_by_user,
-    get_income,
-    update_income,
-    delete_income
+from app.crud.bank_account import (
+    create_bank_account,
+    get_bank_accounts_by_user,
+    get_bank_account,
+    update_bank_account,
+    delete_bank_account
 )
 
 from app.core.deps import get_current_user
@@ -24,135 +24,115 @@ router = APIRouter()
 
 
 # ==========================================================
-# CREATE INCOME
+# CREATE BANK ACCOUNT
 # ==========================================================
 
-@router.post(
-    "/",
-    response_model=IncomeOut
-)
-def add_income(
-    income_in: IncomeCreate,
+@router.post("/", response_model=BankAccountOut)
+def add_bank_account(
+    account_in: BankAccountCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    income = create_income(
+    account = create_bank_account(
         db,
         current_user.id,
-        income_in
+        account_in
     )
 
-    if not income:
+    if not account:
         raise HTTPException(
             status_code=400,
-            detail="Invalid bank account"
+            detail="This bank account already exists"
         )
 
-    return income
-
-
+    return account
 # ==========================================================
-# LIST INCOMES
+# LIST BANK ACCOUNTS
 # ==========================================================
 
-@router.get(
-    "/",
-    response_model=list[IncomeOut]
-)
-def list_incomes(
-    skip: int = 0,
-    limit: int = 100,
+@router.get("/", response_model=list[BankAccountOut])
+def list_bank_accounts(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return get_incomes_by_user(
+    return get_bank_accounts_by_user(
         db,
-        current_user.id,
-        skip,
-        limit
-    )
-
-
-# ==========================================================
-# GET SINGLE INCOME
-# ==========================================================
-
-@router.get(
-    "/{income_id}",
-    response_model=IncomeOut
-)
-def get_single_income(
-    income_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    income = get_income(
-        db,
-        income_id,
         current_user.id
     )
 
-    if not income:
-        raise HTTPException(
-            status_code=404,
-            detail="Income not found"
-        )
-
-    return income
-
 
 # ==========================================================
-# UPDATE INCOME
+# GET SINGLE BANK ACCOUNT
 # ==========================================================
 
-@router.put(
-    "/{income_id}",
-    response_model=IncomeOut
-)
-def edit_income(
-    income_id: int,
-    income_in: IncomeCreate,
+@router.get("/{account_id}", response_model=BankAccountOut)
+def get_single_bank_account(
+    account_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    income = update_income(
+    account = get_bank_account(
         db,
-        income_id,
-        current_user.id,
-        income_in
-    )
-
-    if not income:
-        raise HTTPException(
-            status_code=404,
-            detail="Income or bank account not found"
-        )
-
-    return income
-
-
-# ==========================================================
-# DELETE INCOME
-# ==========================================================
-
-@router.delete("/{income_id}")
-def remove_income(
-    income_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    income = delete_income(
-        db,
-        income_id,
+        account_id,
         current_user.id
     )
 
-    if not income:
+    if not account:
         raise HTTPException(
             status_code=404,
-            detail="Income not found"
+            detail="Bank account not found"
+        )
+
+    return account
+
+
+# ==========================================================
+# UPDATE BANK ACCOUNT
+# ==========================================================
+
+@router.put("/{account_id}", response_model=BankAccountOut)
+def edit_bank_account(
+    account_id: int,
+    account_in: BankAccountCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    account = update_bank_account(
+        db,
+        account_id,
+        current_user.id,
+        account_in
+    )
+
+    if not account:
+        raise HTTPException(
+            status_code=400,
+            detail="Bank account not found or duplicate account"
+        )
+
+    return account
+# ==========================================================
+# DELETE BANK ACCOUNT
+# ==========================================================
+
+@router.delete("/{account_id}")
+def remove_bank_account(
+    account_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    account = delete_bank_account(
+        db,
+        account_id,
+        current_user.id
+    )
+
+    if not account:
+        raise HTTPException(
+            status_code=404,
+            detail="Bank account not found"
         )
 
     return {
-        "message": "Income deleted successfully"
+        "message": "Bank account deleted successfully"
     }

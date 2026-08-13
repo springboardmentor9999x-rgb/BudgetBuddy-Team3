@@ -1,21 +1,58 @@
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from app.models.bank_account import BankAccount
 from app.models.income import Income
 from app.schemas.income import IncomeCreate
 
 
-def create_income(db: Session, user_id: int, income_in: IncomeCreate):
+# ==========================================================
+# CREATE INCOME
+# ==========================================================
+
+def create_income(
+    db: Session,
+    user_id: int,
+    income_in: IncomeCreate
+):
+    # Find selected bank account
+    account = (
+        db.query(BankAccount)
+        .filter(
+            BankAccount.id == income_in.bank_account_id,
+            BankAccount.user_id == user_id
+        )
+        .first()
+    )
+
+    if not account:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid bank account"
+        )
+
     income = Income(
         user_id=user_id,
-        **income_in.model_dump()
+        source=income_in.source,
+        amount=income_in.amount,
+        notes=income_in.notes,
+        bank_account_id=income_in.bank_account_id
     )
 
     db.add(income)
+
+    # Add income to bank balance
+    account.balance += income_in.amount
+
     db.commit()
     db.refresh(income)
 
     return income
 
+
+# ==========================================================
+# GET ALL INCOMES
+# ==========================================================
 
 def get_incomes_by_user(
     db: Session,
@@ -32,6 +69,10 @@ def get_incomes_by_user(
     )
 
 
+# ==========================================================
+# GET SINGLE INCOME
+# ==========================================================
+
 def get_income(
     db: Session,
     income_id: int,
@@ -47,28 +88,98 @@ def get_income(
     )
 
 
+# ==========================================================
+# UPDATE INCOME
+# ==========================================================
+
 def update_income(
     db: Session,
     income_id: int,
     user_id: int,
     income_in: IncomeCreate
 ):
-    income = get_income(db, income_id, user_id)
+    income = get_income(
+        db,
+        income_id,
+        user_id
+    )
 
     if not income:
         return None
 
-    update_data = income_in.model_dump()
+    # Old bank account
+    old_account = (
+        db.query(BankAccount)
+        .filter(
+            BankAccount.id == income.bank_account_id,
+            BankAccount.user_id == user_id
+        )
+        .first()
+    )
 
-    for key, value in update_data.items():
-        setattr(income, key, value)
+    # New bank account
+    new_account = (
+        db.query(BankAccount)
+        .filter(
+            BankAccount.id == income_in.bank_account_id,
+            BankAccount.user_id == user_id
+        )
+        .first()
+    )
+
+    if not new_account:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid bank account"
+        )
+
+    # ======================================================
+    # SAME BANK ACCOUNT
+    # ======================================================
+
+    if (
+        old_account
+        and old_account.id == new_account.id
+    ):
+        # Remove old income amount
+        old_account.balance -= income.amount
+
+        # Add new income amount
+        new_account.balance += income_in.amount
+
+    # ======================================================
+    # DIFFERENT BANK ACCOUNT
+    # ======================================================
+
+    else:
+        # Remove income from old account
+        if old_account:
+            old_account.balance -= income.amount
+
+        # Add income to new account
+        new_account.balance += income_in.amount
+
+    # Update income record
+    income.source = income_in.source
+    income.amount = income_in.amount
+    income.notes = income_in.notes
+    income.bank_account_id = income_in.bank_account_id
 
     db.commit()
     db.refresh(income)
 
     return income
 
-def delete_income(db: Session, income_id: int, user_id: int):
+
+# ==========================================================
+# DELETE INCOME
+# ==========================================================
+
+def delete_income(
+    db: Session,
+    income_id: int,
+    user_id: int
+):
     income = (
         db.query(Income)
         .filter(
@@ -81,7 +192,24 @@ def delete_income(db: Session, income_id: int, user_id: int):
     if not income:
         return None
 
+    # Find associated bank account
+    if income.bank_account_id is not None:
+
+        account = (
+            db.query(BankAccount)
+            .filter(
+                BankAccount.id == income.bank_account_id,
+                BankAccount.user_id == user_id
+            )
+            .first()
+        )
+
+        # Remove income from balance
+        if account:
+            account.balance -= income.amount
+
     db.delete(income)
+
     db.commit()
 
     return income

@@ -1,7 +1,17 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import auth, expense, income, budget, dashboard
+from app.routers import (
+    auth,
+    expense,
+    income,
+    budget,
+    dashboard,
+    savings_goal,
+    notification,
+    bank_account
+)
+
 from app.database import engine
 from app.core.deps import get_current_user
 from app.models.user import User
@@ -10,7 +20,10 @@ from app.models.user import User
 app = FastAPI(title="BudgetBuddy API")
 
 
-# CORS configuration
+# ==========================================================
+# CORS CONFIGURATION
+# ==========================================================
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],
@@ -20,7 +33,10 @@ app.add_middleware(
 )
 
 
-# Authentication routes
+# ==========================================================
+# AUTHENTICATION ROUTES
+# ==========================================================
+
 app.include_router(
     auth.router,
     prefix="/auth",
@@ -28,7 +44,10 @@ app.include_router(
 )
 
 
-# Expense CRUD routes
+# ==========================================================
+# EXPENSE CRUD ROUTES
+# ==========================================================
+
 app.include_router(
     expense.router,
     prefix="/expenses",
@@ -36,7 +55,10 @@ app.include_router(
 )
 
 
-# Income CRUD routes
+# ==========================================================
+# INCOME CRUD ROUTES
+# ==========================================================
+
 app.include_router(
     income.router,
     prefix="/incomes",
@@ -44,18 +66,64 @@ app.include_router(
 )
 
 
-# Budget CRUD routes
+# ==========================================================
+# BUDGET CRUD ROUTES
+# ==========================================================
+
 app.include_router(
     budget.router,
     prefix="/budgets",
     tags=["Budgets"]
 )
 
+
+# ==========================================================
+# DASHBOARD ROUTES
+# ==========================================================
+
 app.include_router(
     dashboard.router,
     prefix="",
     tags=["Dashboard"]
 )
+
+
+# ==========================================================
+# BANK ACCOUNT CRUD ROUTES
+# ==========================================================
+
+app.include_router(
+    bank_account.router,
+    prefix="/bank-accounts",
+    tags=["Bank Accounts"]
+)
+
+
+# ==========================================================
+# SAVINGS GOAL CRUD ROUTES
+# ==========================================================
+
+app.include_router(
+    savings_goal.router,
+    prefix="",
+    tags=["Savings Goals"]
+)
+
+
+# ==========================================================
+# NOTIFICATION ROUTES
+# ==========================================================
+
+app.include_router(
+    notification.router,
+    prefix="",
+    tags=["Notifications"]
+)
+
+
+# ==========================================================
+# ROOT
+# ==========================================================
 
 @app.get("/")
 def root():
@@ -64,6 +132,10 @@ def root():
     }
 
 
+# ==========================================================
+# DATABASE TEST
+# ==========================================================
+
 @app.get("/db-test")
 def db_test():
     try:
@@ -71,11 +143,16 @@ def db_test():
             return {
                 "message": "Database Connected Successfully"
             }
+
     except Exception as e:
         return {
             "error": str(e)
         }
 
+
+# ==========================================================
+# CURRENT USER
+# ==========================================================
 
 @app.get("/me")
 def get_me(

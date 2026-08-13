@@ -9,12 +9,22 @@ from app.database import Base
 class Income(Base):
     __tablename__ = "incomes"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
 
     user_id = Column(
         Integer,
         ForeignKey("users.id"),
         nullable=False
+    )
+
+    bank_account_id = Column(
+        Integer,
+        ForeignKey("bank_accounts.id"),
+        nullable=True
     )
 
     source = Column(
@@ -40,5 +50,10 @@ class Income(Base):
 
     owner = relationship(
         "User",
+        back_populates="incomes"
+    )
+
+    bank_account = relationship(
+        "BankAccount",
         back_populates="incomes"
     )

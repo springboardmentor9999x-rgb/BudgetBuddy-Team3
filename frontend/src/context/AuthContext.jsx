@@ -1,14 +1,27 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
+
 import api from "../api/axios";
 
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-  const [token, setToken] = useState(() => localStorage.getItem("token"));
+  const [token, setToken] = useState(
+    () => localStorage.getItem("token")
+  );
+
   const [user, setUser] = useState(null);
+
   const [loading, setLoading] = useState(true);
 
-  // Get the logged-in user's details using the JWT
+  // ==========================================================
+  // LOAD CURRENT USER
+  // ==========================================================
+
   useEffect(() => {
     const loadUser = async () => {
       if (!token) {
@@ -19,11 +32,16 @@ export function AuthProvider({ children }) {
 
       try {
         const response = await api.get("/auth/me");
+
         setUser(response.data);
       } catch (error) {
-        console.error("Failed to load user:", error);
+        console.error(
+          "Failed to load user:",
+          error
+        );
 
         localStorage.removeItem("token");
+
         setToken(null);
         setUser(null);
       } finally {
@@ -34,30 +52,71 @@ export function AuthProvider({ children }) {
     loadUser();
   }, [token]);
 
+  // ==========================================================
+  // SIGNUP
+  // ==========================================================
+
   const signup = async (userData) => {
-    return await api.post("/auth/signup", userData);
+    return await api.post(
+      "/auth/signup",
+      userData
+    );
   };
+
+  // ==========================================================
+  // LOGIN
+  // ==========================================================
 
   const login = async (email, password) => {
     const formData = new URLSearchParams();
 
-    formData.append("username", email);
-    formData.append("password", password);
+    formData.append(
+      "username",
+      email
+    );
 
-    const response = await api.post("/auth/login", formData, {
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-    });
+    formData.append(
+      "password",
+      password
+    );
 
-    const accessToken = response.data.access_token;
+    const response = await api.post(
+      "/auth/login",
+      formData,
+      {
+        headers: {
+          "Content-Type":
+            "application/x-www-form-urlencoded",
+        },
+      }
+    );
 
-    localStorage.setItem("token", accessToken);
+    const accessToken =
+      response.data.access_token;
+
+    localStorage.setItem(
+      "token",
+      accessToken
+    );
+
     setToken(accessToken);
   };
 
+  // ==========================================================
+  // UPDATE USER IN FRONTEND STATE
+  // ==========================================================
+
+  const updateUser = (updatedUser) => {
+    setUser(updatedUser);
+  };
+
+  // ==========================================================
+  // LOGOUT
+  // ==========================================================
+
   const logout = () => {
     localStorage.removeItem("token");
+
     setToken(null);
     setUser(null);
   };
@@ -71,6 +130,7 @@ export function AuthProvider({ children }) {
         signup,
         login,
         logout,
+        updateUser,
       }}
     >
       {children}
@@ -78,4 +138,5 @@ export function AuthProvider({ children }) {
   );
 }
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () =>
+  useContext(AuthContext);
