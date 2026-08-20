@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.database import Base
 
@@ -12,7 +12,11 @@ class User(Base):
     # BASIC USER DETAILS
     # ==========================================================
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
 
     email = Column(
         String,
@@ -28,17 +32,20 @@ class User(Base):
 
     role = Column(
         String,
-        default="student"
+        default="student",
+        nullable=False
     )
 
     is_active = Column(
         Boolean,
-        default=True
+        default=True,
+        nullable=False
     )
 
     created_at = Column(
         DateTime,
-        default=datetime.utcnow
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False
     )
 
     full_name = Column(
@@ -48,6 +55,40 @@ class User(Base):
 
     phone = Column(
         String,
+        nullable=True
+    )
+
+    # ==========================================================
+    # EMAIL VERIFICATION
+    # ==========================================================
+
+    is_verified = Column(
+        Boolean,
+        default=False,
+        nullable=False
+    )
+
+    verification_token = Column(
+        String,
+        nullable=True
+    )
+
+    verification_token_expires = Column(
+        DateTime,
+        nullable=True
+    )
+
+    # ==========================================================
+    # PASSWORD RESET
+    # ==========================================================
+
+    reset_token = Column(
+        String,
+        nullable=True
+    )
+
+    reset_token_expires = Column(
+        DateTime,
         nullable=True
     )
 
@@ -87,14 +128,21 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan"
     )
-    # Savings Goals
+
+    # ==========================================================
+    # SAVINGS GOALS
+    # ==========================================================
+
     savings_goals = relationship(
         "SavingsGoal",
         back_populates="owner",
         cascade="all, delete-orphan"
     )
 
-# Notifications
+    # ==========================================================
+    # NOTIFICATIONS
+    # ==========================================================
+
     notifications = relationship(
         "Notification",
         back_populates="owner",

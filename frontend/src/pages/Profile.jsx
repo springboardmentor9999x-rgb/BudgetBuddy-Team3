@@ -1,17 +1,30 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 
 import { useAuth } from "../context/AuthContext";
 import api from "../api/axios";
 
 export default function Profile() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const {
+    user,
+    updateUser,
+  } = useAuth();
 
   const [editingName, setEditingName] = useState(false);
-  const [name, setName] = useState(user?.full_name || "");
+
+  const [name, setName] = useState(
+    user?.full_name || ""
+  );
+
   const [saving, setSaving] = useState(false);
+
+  // ==========================================================
+  // KEEP NAME IN SYNC WITH USER
+  // ==========================================================
+
+  useEffect(() => {
+    setName(user?.full_name || "");
+  }, [user?.full_name]);
 
   // ==========================================================
   // UPDATE NAME
@@ -26,40 +39,56 @@ export default function Profile() {
     }
 
     if (newName.length < 2) {
-      toast.error("Name must contain at least 2 characters");
+      toast.error(
+        "Name must contain at least 2 characters"
+      );
       return;
     }
 
     try {
       setSaving(true);
 
-      const response = await api.put("/auth/me/name", {
-        full_name: newName,
-      });
+      const response = await api.put(
+        "/auth/me/name",
+        {
+          full_name: newName,
+        }
+      );
 
-      // Update local user data
+      // Update AuthContext
       if (user) {
-        user.full_name = response.data.full_name;
+        updateUser({
+          ...user,
+          full_name: response.data.full_name,
+        });
       }
 
       setName(response.data.full_name);
+
       setEditingName(false);
 
-      toast.success("Name updated successfully");
+      toast.success(
+        "Name updated successfully"
+      );
+
     } catch (error) {
-      console.error("Failed to update name:", error);
+      console.error(
+        "Failed to update name:",
+        error
+      );
 
       toast.error(
         error.response?.data?.detail ||
           "Failed to update name"
       );
+
     } finally {
       setSaving(false);
     }
   };
 
   // ==========================================================
-  // CANCEL NAME EDIT
+  // CANCEL EDIT
   // ==========================================================
 
   const cancelNameEdit = () => {
@@ -68,635 +97,402 @@ export default function Profile() {
   };
 
   // ==========================================================
-  // UI
+  // FORMAT CREATED DATE
+  // ==========================================================
+
+  const formatCreatedDate = (date) => {
+    if (!date) {
+      return "Not available";
+    }
+
+    const parsedDate = new Date(date);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return "Not available";
+    }
+
+    return parsedDate.toLocaleDateString(
+      "en-IN",
+      {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      }
+    );
+  };
+
+  // ==========================================================
+  // PROFILE CONTENT ONLY
+  //
+  // Sidebar and top header are provided by Layout.jsx
   // ==========================================================
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="w-full">
 
       {/* =====================================================
-          SIDEBAR
+          PAGE TITLE
       ===================================================== */}
 
-      <aside
-        className="
-          fixed
-          left-0
-          top-0
-          h-screen
-          w-64
-          bg-blue-600
-          text-white
-          flex
-          flex-col
-          shadow-lg
-          z-50
-        "
-      >
+      <div className="max-w-5xl mx-auto mb-8">
 
-        {/* LOGO */}
+        <h1 className="text-3xl font-bold text-gray-800">
+          Profile
+        </h1>
 
-        <div className="px-6 py-5 border-b border-blue-500">
-          <h1 className="text-2xl font-bold">
-            BudgetBuddy
-          </h1>
-        </div>
+        <p className="text-gray-600 mt-2">
+          View and manage your account information
+        </p>
 
-        {/* NAVIGATION */}
-
-        <nav className="flex-1 px-4 py-6">
-
-          <div className="space-y-2">
-
-            {/* DASHBOARD */}
-
-            <button
-              onClick={() => navigate("/dashboard")}
-              className="
-                w-full
-                flex
-                items-center
-                gap-3
-                px-4
-                py-3
-                rounded-lg
-                hover:bg-blue-500
-                transition
-                text-left
-              "
-            >
-              <span>🏠</span>
-              <span>Dashboard</span>
-            </button>
-
-            {/* INCOME */}
-
-            <button
-              onClick={() => navigate("/income")}
-              className="
-                w-full
-                flex
-                items-center
-                gap-3
-                px-4
-                py-3
-                rounded-lg
-                hover:bg-blue-500
-                transition
-                text-left
-              "
-            >
-              <span>💰</span>
-              <span>Income</span>
-            </button>
-
-            {/* EXPENSE */}
-
-            <button
-              onClick={() => navigate("/expense")}
-              className="
-                w-full
-                flex
-                items-center
-                gap-3
-                px-4
-                py-3
-                rounded-lg
-                hover:bg-blue-500
-                transition
-                text-left
-              "
-            >
-              <span>💳</span>
-              <span>Expense</span>
-            </button>
-
-            {/* BUDGET */}
-
-            <button
-              onClick={() => navigate("/budget")}
-              className="
-                w-full
-                flex
-                items-center
-                gap-3
-                px-4
-                py-3
-                rounded-lg
-                hover:bg-blue-500
-                transition
-                text-left
-              "
-            >
-              <span>📊</span>
-              <span>Budget</span>
-            </button>
-
-            {/* REPORTS */}
-
-            <button
-              onClick={() => navigate("/reports")}
-              className="
-                w-full
-                flex
-                items-center
-                gap-3
-                px-4
-                py-3
-                rounded-lg
-                hover:bg-blue-500
-                transition
-                text-left
-              "
-            >
-              <span>📈</span>
-              <span>Reports</span>
-            </button>
-
-            {/* ANALYTICS */}
-
-            <button
-              onClick={() => navigate("/analytics")}
-              className="
-                w-full
-                flex
-                items-center
-                gap-3
-                px-4
-                py-3
-                rounded-lg
-                hover:bg-blue-500
-                transition
-                text-left
-              "
-            >
-              <span>📉</span>
-              <span>Analytics</span>
-            </button>
-
-            {/* BANK ACCOUNT */}
-
-            <button
-              onClick={() => navigate("/bank-account")}
-              className="
-                w-full
-                flex
-                items-center
-                gap-3
-                px-4
-                py-3
-                rounded-lg
-                hover:bg-blue-500
-                transition
-                text-left
-              "
-            >
-              <span>🏦</span>
-              <span>Bank Account</span>
-            </button>
-
-            {/* PROFILE */}
-
-            <button
-              onClick={() => navigate("/profile")}
-              className="
-                w-full
-                flex
-                items-center
-                gap-3
-                px-4
-                py-3
-                rounded-lg
-                bg-white
-                text-blue-600
-                font-medium
-                text-left
-              "
-            >
-              <span>👤</span>
-              <span>Profile</span>
-            </button>
-
-          </div>
-
-        </nav>
-
-        {/* LOGOUT */}
-
-        <div className="px-4 py-5 border-t border-blue-500">
-
-          <button
-            onClick={logout}
-            className="
-              w-full
-              flex
-              items-center
-              gap-3
-              px-4
-              py-3
-              rounded-lg
-              hover:bg-red-500
-              transition
-              text-left
-            "
-          >
-            <span>🚪</span>
-            <span>Logout</span>
-          </button>
-
-        </div>
-
-      </aside>
+      </div>
 
       {/* =====================================================
-          MAIN CONTENT
+          PROFILE CARD
       ===================================================== */}
 
-      <div className="ml-64 min-h-screen">
+      <div className="max-w-5xl mx-auto">
 
-        {/* HEADER */}
+        <div className="bg-white rounded-xl shadow">
 
-        <header
-          className="
-            bg-white
-            shadow-sm
-            px-8
-            py-4
-            flex
-            justify-between
-            items-center
-          "
-        >
+          {/* =================================================
+              PROFILE HEADER
+          ================================================= */}
 
-          <div>
-            <h2 className="text-xl font-semibold text-gray-800">
-              My Profile
-            </h2>
+          <div className="p-6 border-b">
 
-            <p className="text-sm text-gray-500">
-              Manage your account details
-            </p>
-          </div>
+            <div className="flex items-center gap-5">
 
-          <div className="flex items-center gap-4">
+              {/* PROFILE INITIAL */}
 
-            <span className="text-gray-600">
-              {user?.email}
-            </span>
+              <div
+                className="
+                  w-20
+                  h-20
+                  rounded-full
+                  bg-blue-100
+                  text-blue-600
+                  flex
+                  items-center
+                  justify-center
+                  text-3xl
+                  font-bold
+                  flex-shrink-0
+                "
+              >
+                {(
+                  user?.full_name ||
+                  user?.email ||
+                  "U"
+                )
+                  .charAt(0)
+                  .toUpperCase()}
+              </div>
 
-            <button
-              onClick={logout}
-              className="
-                bg-red-500
-                hover:bg-red-600
-                text-white
-                px-4
-                py-2
-                rounded-lg
-              "
-            >
-              Logout
-            </button>
+              {/* USER INFORMATION */}
 
-          </div>
+              <div>
 
-        </header>
+                <h2 className="text-2xl font-bold text-gray-800">
+                  {user?.full_name || "User"}
+                </h2>
 
-        {/* CONTENT */}
+                <p className="text-gray-500">
+                  {user?.email || "Not provided"}
+                </p>
 
-        <main className="p-8">
+              </div>
 
-          {/* PAGE TITLE */}
-
-          <div className="mb-8">
-
-            <h1 className="text-3xl font-bold text-gray-800">
-              Profile
-            </h1>
-
-            <p className="text-gray-600 mt-2">
-              View and manage your account information
-            </p>
+            </div>
 
           </div>
 
-          {/* PROFILE CARD */}
+          {/* =================================================
+              ACCOUNT DETAILS
+          ================================================= */}
 
-          <div className="max-w-4xl">
+          <div className="p-6">
 
-            <div className="bg-white rounded-xl shadow">
+            <h3 className="text-xl font-semibold text-gray-800 mb-6">
+              Account Details
+            </h3>
 
-              {/* PROFILE HEADER */}
+            <div className="space-y-6">
 
-              <div className="p-6 border-b">
+              {/* =================================================
+                  FULL NAME
+              ================================================= */}
 
-                <div className="flex items-center gap-5">
+              <div>
+
+                <div className="flex justify-between items-center mb-2">
+
+                  <label className="font-medium text-gray-700">
+                    Full Name
+                  </label>
+
+                  {!editingName && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditingName(true)
+                      }
+                      className="
+                        text-blue-600
+                        hover:text-blue-800
+                        text-sm
+                        font-medium
+                      "
+                    >
+                      Edit
+                    </button>
+                  )}
+
+                </div>
+
+                {!editingName ? (
 
                   <div
                     className="
-                      w-20
-                      h-20
-                      rounded-full
-                      bg-blue-100
-                      text-blue-600
-                      flex
-                      items-center
-                      justify-center
-                      text-3xl
-                      font-bold
+                      w-full
+                      bg-gray-50
+                      border
+                      border-gray-200
+                      rounded-lg
+                      px-4
+                      py-3
+                      text-gray-800
                     "
                   >
-                    {(
-                      user?.full_name ||
-                      user?.email ||
-                      "U"
-                    )
-                      .charAt(0)
-                      .toUpperCase()}
+                    {user?.full_name ||
+                      "Not provided"}
                   </div>
+
+                ) : (
 
                   <div>
 
-                    <h2 className="text-2xl font-bold text-gray-800">
-                      {user?.full_name || "User"}
-                    </h2>
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(e) =>
+                        setName(
+                          e.target.value
+                        )
+                      }
+                      disabled={saving}
+                      className="
+                        w-full
+                        border
+                        border-gray-300
+                        rounded-lg
+                        px-4
+                        py-3
+                        focus:outline-none
+                        focus:ring-2
+                        focus:ring-blue-500
+                        disabled:bg-gray-100
+                      "
+                      placeholder="Enter your full name"
+                    />
 
-                    <p className="text-gray-500">
-                      {user?.email}
-                    </p>
+                    <div className="flex gap-3 mt-3">
+
+                      {/* SAVE */}
+
+                      <button
+                        type="button"
+                        onClick={updateName}
+                        disabled={saving}
+                        className="
+                          bg-blue-600
+                          hover:bg-blue-700
+                          disabled:bg-blue-300
+                          text-white
+                          px-5
+                          py-2
+                          rounded-lg
+                          transition
+                        "
+                      >
+                        {saving
+                          ? "Saving..."
+                          : "Save"}
+                      </button>
+
+                      {/* CANCEL */}
+
+                      <button
+                        type="button"
+                        onClick={cancelNameEdit}
+                        disabled={saving}
+                        className="
+                          bg-gray-200
+                          hover:bg-gray-300
+                          disabled:bg-gray-100
+                          text-gray-700
+                          px-5
+                          py-2
+                          rounded-lg
+                          transition
+                        "
+                      >
+                        Cancel
+                      </button>
+
+                    </div>
 
                   </div>
 
+                )}
+
+              </div>
+
+              {/* =================================================
+                  EMAIL
+              ================================================= */}
+
+              <div>
+
+                <label className="block font-medium text-gray-700 mb-2">
+                  Email Address
+                </label>
+
+                <div
+                  className="
+                    w-full
+                    bg-gray-100
+                    border
+                    border-gray-200
+                    rounded-lg
+                    px-4
+                    py-3
+                    text-gray-600
+                  "
+                >
+                  {user?.email ||
+                    "Not provided"}
+                </div>
+
+                <p className="text-xs text-gray-500 mt-2">
+                  Email address cannot be changed.
+                </p>
+
+              </div>
+
+              {/* =================================================
+                  PHONE
+              ================================================= */}
+
+              <div>
+
+                <label className="block font-medium text-gray-700 mb-2">
+                  Phone Number
+                </label>
+
+                <div
+                  className="
+                    w-full
+                    bg-gray-100
+                    border
+                    border-gray-200
+                    rounded-lg
+                    px-4
+                    py-3
+                    text-gray-600
+                  "
+                >
+                  {user?.phone ||
+                    "Not provided"}
+                </div>
+
+                <p className="text-xs text-gray-500 mt-2">
+                  Phone number cannot be changed.
+                </p>
+
+              </div>
+
+              {/* =================================================
+                  ROLE
+              ================================================= */}
+
+              <div>
+
+                <label className="block font-medium text-gray-700 mb-2">
+                  Account Role
+                </label>
+
+                <div
+                  className="
+                    w-full
+                    bg-gray-100
+                    border
+                    border-gray-200
+                    rounded-lg
+                    px-4
+                    py-3
+                    text-gray-600
+                  "
+                >
+                  {user?.role ||
+                    "student"}
                 </div>
 
               </div>
 
-              {/* ACCOUNT DETAILS */}
+              {/* =================================================
+                  ACCOUNT STATUS
+              ================================================= */}
 
-              <div className="p-6">
+              <div>
 
-                <h3 className="text-xl font-semibold text-gray-800 mb-6">
-                  Account Details
-                </h3>
+                <label className="block font-medium text-gray-700 mb-2">
+                  Account Status
+                </label>
 
-                <div className="space-y-6">
+                <div
+                  className="
+                    w-full
+                    bg-gray-100
+                    border
+                    border-gray-200
+                    rounded-lg
+                    px-4
+                    py-3
+                    text-gray-600
+                  "
+                >
+                  {user?.is_active
+                    ? "Active"
+                    : "Inactive"}
+                </div>
 
-                  {/* NAME */}
+              </div>
 
-                  <div>
+              {/* =================================================
+                  CREATED DATE
+              ================================================= */}
 
-                    <div className="flex justify-between items-center mb-2">
+              <div>
 
-                      <label className="font-medium text-gray-700">
-                        Full Name
-                      </label>
+                <label className="block font-medium text-gray-700 mb-2">
+                  Account Created
+                </label>
 
-                      {!editingName && (
-                        <button
-                          onClick={() => setEditingName(true)}
-                          className="
-                            text-blue-600
-                            hover:text-blue-800
-                            text-sm
-                            font-medium
-                          "
-                        >
-                          Edit
-                        </button>
-                      )}
-
-                    </div>
-
-                    {!editingName ? (
-
-                      <div
-                        className="
-                          w-full
-                          bg-gray-50
-                          border
-                          border-gray-200
-                          rounded-lg
-                          px-4
-                          py-3
-                          text-gray-800
-                        "
-                      >
-                        {user?.full_name || "Not provided"}
-                      </div>
-
-                    ) : (
-
-                      <div>
-
-                        <input
-                          type="text"
-                          value={name}
-                          onChange={(e) =>
-                            setName(e.target.value)
-                          }
-                          className="
-                            w-full
-                            border
-                            border-gray-300
-                            rounded-lg
-                            px-4
-                            py-3
-                            focus:outline-none
-                            focus:ring-2
-                            focus:ring-blue-500
-                          "
-                          placeholder="Enter your full name"
-                        />
-
-                        <div className="flex gap-3 mt-3">
-
-                          <button
-                            onClick={updateName}
-                            disabled={saving}
-                            className="
-                              bg-blue-600
-                              hover:bg-blue-700
-                              disabled:bg-blue-300
-                              text-white
-                              px-5
-                              py-2
-                              rounded-lg
-                            "
-                          >
-                            {saving
-                              ? "Saving..."
-                              : "Save"}
-                          </button>
-
-                          <button
-                            onClick={cancelNameEdit}
-                            disabled={saving}
-                            className="
-                              bg-gray-200
-                              hover:bg-gray-300
-                              text-gray-700
-                              px-5
-                              py-2
-                              rounded-lg
-                            "
-                          >
-                            Cancel
-                          </button>
-
-                        </div>
-
-                      </div>
-
-                    )}
-
-                  </div>
-
-                  {/* EMAIL */}
-
-                  <div>
-
-                    <label className="block font-medium text-gray-700 mb-2">
-                      Email Address
-                    </label>
-
-                    <div
-                      className="
-                        w-full
-                        bg-gray-100
-                        border
-                        border-gray-200
-                        rounded-lg
-                        px-4
-                        py-3
-                        text-gray-600
-                      "
-                    >
-                      {user?.email || "Not provided"}
-                    </div>
-
-                    <p className="text-xs text-gray-500 mt-2">
-                      Email address cannot be changed.
-                    </p>
-
-                  </div>
-
-                  {/* PHONE */}
-
-                  <div>
-
-                    <label className="block font-medium text-gray-700 mb-2">
-                      Phone Number
-                    </label>
-
-                    <div
-                      className="
-                        w-full
-                        bg-gray-100
-                        border
-                        border-gray-200
-                        rounded-lg
-                        px-4
-                        py-3
-                        text-gray-600
-                      "
-                    >
-                      {user?.phone || "Not provided"}
-                    </div>
-
-                    <p className="text-xs text-gray-500 mt-2">
-                      Phone number cannot be changed.
-                    </p>
-
-                  </div>
-
-                  {/* ROLE */}
-
-                  <div>
-
-                    <label className="block font-medium text-gray-700 mb-2">
-                      Account Role
-                    </label>
-
-                    <div
-                      className="
-                        w-full
-                        bg-gray-100
-                        border
-                        border-gray-200
-                        rounded-lg
-                        px-4
-                        py-3
-                        text-gray-600
-                      "
-                    >
-                      {user?.role || "student"}
-                    </div>
-
-                  </div>
-
-                  {/* ACCOUNT STATUS */}
-
-                  <div>
-
-                    <label className="block font-medium text-gray-700 mb-2">
-                      Account Status
-                    </label>
-
-                    <div
-                      className="
-                        w-full
-                        bg-gray-100
-                        border
-                        border-gray-200
-                        rounded-lg
-                        px-4
-                        py-3
-                        text-gray-600
-                      "
-                    >
-                      {user?.is_active
-                        ? "Active"
-                        : "Inactive"}
-                    </div>
-
-                  </div>
-
-                  {/* CREATED DATE */}
-
-                  <div>
-
-                    <label className="block font-medium text-gray-700 mb-2">
-                      Account Created
-                    </label>
-
-                    <div
-                      className="
-                        w-full
-                        bg-gray-100
-                        border
-                        border-gray-200
-                        rounded-lg
-                        px-4
-                        py-3
-                        text-gray-600
-                      "
-                    >
-                      {user?.created_at
-                        ? new Date(
-                            user.created_at
-                          ).toLocaleDateString(
-                            "en-IN",
-                            {
-                              day: "2-digit",
-                              month: "long",
-                              year: "numeric",
-                            }
-                          )
-                        : "Not available"}
-                    </div>
-
-                  </div>
-
+                <div
+                  className="
+                    w-full
+                    bg-gray-100
+                    border
+                    border-gray-200
+                    rounded-lg
+                    px-4
+                    py-3
+                    text-gray-600
+                  "
+                >
+                  {formatCreatedDate(
+                    user?.created_at
+                  )}
                 </div>
 
               </div>
@@ -705,7 +501,7 @@ export default function Profile() {
 
           </div>
 
-        </main>
+        </div>
 
       </div>
 

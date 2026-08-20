@@ -27,12 +27,16 @@ export default function Income() {
   const [loading, setLoading] = useState(false);
   const [loadingAccounts, setLoadingAccounts] = useState(true);
 
+  // Show / hide income form
+  const [showForm, setShowForm] = useState(false);
+
   // ==========================================
   // GET ALL INCOMES
   // ==========================================
 
   const fetchIncomes = async () => {
     try {
+
       const response = await api.get("/incomes/");
 
       setIncomes(
@@ -42,6 +46,7 @@ export default function Income() {
       );
 
     } catch (error) {
+
       console.error(
         "Fetch income error:",
         error
@@ -60,6 +65,7 @@ export default function Income() {
 
   const fetchBankAccounts = async () => {
     try {
+
       setLoadingAccounts(true);
 
       const response = await api.get(
@@ -73,6 +79,7 @@ export default function Income() {
       );
 
     } catch (error) {
+
       console.error(
         "Fetch bank accounts error:",
         error
@@ -84,6 +91,7 @@ export default function Income() {
       );
 
     } finally {
+
       setLoadingAccounts(false);
     }
   };
@@ -93,8 +101,10 @@ export default function Income() {
   // ==========================================
 
   useEffect(() => {
+
     fetchIncomes();
     fetchBankAccounts();
+
   }, []);
 
   // ==========================================
@@ -102,32 +112,45 @@ export default function Income() {
   // ==========================================
 
   const handleSubmit = async (e) => {
+
     e.preventDefault();
 
+    // ======================================
     // SOURCE VALIDATION
+    // ======================================
 
     if (!form.source.trim()) {
+
       toast.error(
         "Please enter income source"
       );
+
       return;
     }
 
+    // ======================================
     // AMOUNT VALIDATION
+    // ======================================
 
     if (Number(form.amount) <= 0) {
+
       toast.error(
         "Income amount must be greater than zero"
       );
+
       return;
     }
 
+    // ======================================
     // BANK ACCOUNT VALIDATION
+    // ======================================
 
     if (!form.bank_account_id) {
+
       toast.error(
         "Please select a bank account"
       );
+
       return;
     }
 
@@ -180,15 +203,24 @@ export default function Income() {
         );
       }
 
+      // ======================================
       // RESET FORM
+      // ======================================
 
       resetForm();
 
+      // Hide form after successful operation
+      setShowForm(false);
+
+      // ======================================
       // REFRESH INCOME LIST
+      // ======================================
 
       await fetchIncomes();
 
+      // ======================================
       // REFRESH BANK ACCOUNT BALANCES
+      // ======================================
 
       await fetchBankAccounts();
 
@@ -205,8 +237,32 @@ export default function Income() {
       );
 
     } finally {
+
       setLoading(false);
     }
+  };
+
+  // ==========================================
+  // ADD INCOME BUTTON
+  // ==========================================
+
+  const handleAddIncome = () => {
+
+    setEditingIncome(null);
+
+    setForm({
+      source: "",
+      amount: "",
+      notes: "",
+      bank_account_id: "",
+    });
+
+    setShowForm(true);
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
   };
 
   // ==========================================
@@ -229,6 +285,9 @@ export default function Income() {
           ? String(income.bank_account_id)
           : "",
     });
+
+    // Open form when editing
+    setShowForm(true);
 
     window.scrollTo({
       top: 0,
@@ -260,12 +319,10 @@ export default function Income() {
         "Income deleted successfully"
       );
 
-      // REFRESH INCOME LIST
-
+      // Refresh income list
       await fetchIncomes();
 
-      // REFRESH BANK ACCOUNT BALANCE
-
+      // Refresh bank account balance
       await fetchBankAccounts();
 
     } catch (error) {
@@ -296,6 +353,17 @@ export default function Income() {
     });
 
     setEditingIncome(null);
+  };
+
+  // ==========================================
+  // CANCEL FORM
+  // ==========================================
+
+  const handleCancel = () => {
+
+    resetForm();
+
+    setShowForm(false);
   };
 
   // ==========================================
@@ -330,33 +398,67 @@ export default function Income() {
 
       <main className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
 
-        {/* HEADER */}
+        {/* ======================================
+            HEADER
+        ====================================== */}
 
-        <div className="mb-8">
+        <div className="mb-8 flex justify-between items-start">
 
-          <h1 className="text-3xl font-bold text-gray-800">
-            Income Manager
-          </h1>
+          <div>
 
-          <p className="text-gray-600 mt-2">
-            Add, update and manage your income records
-          </p>
+            <h1 className="text-3xl font-bold text-gray-800">
+              Income Manager
+            </h1>
+
+            <p className="text-gray-600 mt-2">
+              Add, update and manage your income records
+            </p>
+
+          </div>
+
+          {/* ADD INCOME BUTTON */}
+
+          {!showForm && (
+            <button
+              onClick={handleAddIncome}
+              className="
+                bg-green-600
+                hover:bg-green-700
+                text-white
+                px-6
+                py-3
+                rounded-lg
+                font-medium
+                transition
+              "
+            >
+              + Add Income
+            </button>
+          )}
 
         </div>
 
-        {/* FORM */}
+        {/* ======================================
+            FORM
+        ====================================== */}
 
-        <IncomeForm
-          form={form}
-          setForm={setForm}
-          onSubmit={handleSubmit}
-          editing={editingIncome}
-          onCancel={resetForm}
-          loading={loading}
-          bankAccounts={bankAccounts}
-        />
+        {showForm && (
 
-        {/* LIST */}
+          <IncomeForm
+            form={form}
+            setForm={setForm}
+            onSubmit={handleSubmit}
+            editing={editingIncome}
+            onCancel={handleCancel}
+            loading={loading}
+            bankAccounts={bankAccounts}
+          />
+
+        )}
+
+        {/* ======================================
+            LIST
+        ====================================== */}
 
         <IncomeList
           incomes={incomes}

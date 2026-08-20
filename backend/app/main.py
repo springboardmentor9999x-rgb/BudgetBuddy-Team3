@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -9,7 +12,9 @@ from app.routers import (
     dashboard,
     savings_goal,
     notification,
-    bank_account
+    bank_account,
+    analytics,
+    reports
 )
 
 from app.database import engine
@@ -118,6 +123,26 @@ app.include_router(
     notification.router,
     prefix="",
     tags=["Notifications"]
+)
+
+
+# ==========================================================
+# ANALYTICS ROUTES
+# ==========================================================
+
+app.include_router(
+    analytics.router,
+    prefix="",
+    tags=["Analytics"]
+)
+# ==========================================================
+# REPORT ROUTES
+# ==========================================================
+
+app.include_router(
+    reports.router,
+    prefix="",
+    tags=["Reports"]
 )
 
 

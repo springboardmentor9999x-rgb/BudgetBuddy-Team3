@@ -10,6 +10,10 @@ import api from "../api/axios";
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
+  // ==========================================================
+  // AUTH STATE
+  // ==========================================================
+
   const [token, setToken] = useState(
     () => localStorage.getItem("token")
   );
@@ -24,6 +28,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const loadUser = async () => {
+      // No token → user is not logged in
       if (!token) {
         setUser(null);
         setLoading(false);
@@ -31,6 +36,8 @@ export function AuthProvider({ children }) {
       }
 
       try {
+        setLoading(true);
+
         const response = await api.get("/auth/me");
 
         setUser(response.data);
@@ -40,6 +47,7 @@ export function AuthProvider({ children }) {
           error
         );
 
+        // Token is invalid or expired
         localStorage.removeItem("token");
 
         setToken(null);
@@ -61,6 +69,21 @@ export function AuthProvider({ children }) {
       "/auth/signup",
       userData
     );
+  };
+
+  // ==========================================================
+  // RESEND VERIFICATION EMAIL
+  // ==========================================================
+
+  const resendVerification = async (email) => {
+    const response = await api.post(
+      "/auth/resend-verification",
+      {
+        email: email.trim(),
+      }
+    );
+
+    return response.data;
   };
 
   // ==========================================================
@@ -94,16 +117,18 @@ export function AuthProvider({ children }) {
     const accessToken =
       response.data.access_token;
 
+    // Save token
     localStorage.setItem(
       "token",
       accessToken
     );
 
+    // Update token state
     setToken(accessToken);
   };
 
   // ==========================================================
-  // UPDATE USER IN FRONTEND STATE
+  // UPDATE USER
   // ==========================================================
 
   const updateUser = (updatedUser) => {
@@ -121,6 +146,10 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  // ==========================================================
+  // AUTH CONTEXT
+  // ==========================================================
+
   return (
     <AuthContext.Provider
       value={{
@@ -128,6 +157,7 @@ export function AuthProvider({ children }) {
         user,
         loading,
         signup,
+        resendVerification,
         login,
         logout,
         updateUser,
@@ -137,6 +167,10 @@ export function AuthProvider({ children }) {
     </AuthContext.Provider>
   );
 }
+
+// ==========================================================
+// USE AUTH HOOK
+// ==========================================================
 
 export const useAuth = () =>
   useContext(AuthContext);

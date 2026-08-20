@@ -4,8 +4,6 @@ import { useAuth } from "../context/AuthContext";
 import api from "../api/axios";
 import { toast } from "react-toastify";
 
-import NotificationBell from "../components/notification/NotificationBell";
-
 export default function Dashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -54,7 +52,6 @@ export default function Dashboard() {
           "Income fetch error:",
           results[0].reason
         );
-
         setIncomes([]);
       }
 
@@ -73,7 +70,6 @@ export default function Dashboard() {
           "Expense fetch error:",
           results[1].reason
         );
-
         setExpenses([]);
       }
 
@@ -92,7 +88,6 @@ export default function Dashboard() {
           "Budget fetch error:",
           results[2].reason
         );
-
         setBudgets([]);
       }
 
@@ -111,7 +106,6 @@ export default function Dashboard() {
           "Bank account fetch error:",
           results[3].reason
         );
-
         setBankAccounts([]);
       }
 
@@ -120,11 +114,6 @@ export default function Dashboard() {
       // ==================================================
 
       if (results[4].status === "fulfilled") {
-        console.log(
-          "Savings goals response:",
-          results[4].value.data
-        );
-
         setSavingsGoals(
           Array.isArray(results[4].value.data)
             ? results[4].value.data
@@ -135,7 +124,6 @@ export default function Dashboard() {
           "Savings goals fetch error:",
           results[4].reason
         );
-
         setSavingsGoals([]);
       }
 
@@ -168,8 +156,7 @@ export default function Dashboard() {
 
       if (failedRequests.length > 0) {
         console.warn(
-          failedRequests.length +
-            " dashboard API request(s) failed."
+          `${failedRequests.length} dashboard API request(s) failed.`
         );
       }
 
@@ -225,19 +212,11 @@ export default function Dashboard() {
     0
   );
 
-  // ==================================================
-  // TOTAL SAVINGS GOAL TARGET
-  // ==================================================
-
   const totalSavingsGoals = savingsGoals.reduce(
     (sum, goal) =>
       sum + Number(goal.target_amount || 0),
     0
   );
-
-  // ==================================================
-  // TOTAL SAVED AMOUNT
-  // ==================================================
 
   const totalSavedAmount = savingsGoals.reduce(
     (sum, goal) =>
@@ -245,8 +224,18 @@ export default function Dashboard() {
     0
   );
 
-  const balance =
-    totalIncome - totalExpenses;
+  // ==================================================
+  // IMPORTANT
+  //
+  // Actual available balance comes from bank accounts.
+  //
+  // Expenses and savings contributions are already
+  // reflected in the bank account balance by the backend.
+  //
+  // Creating a budget does NOT deduct money.
+  // ==================================================
+
+  const balance = totalBankBalance;
 
   // ==================================================
   // RECENT TRANSACTIONS
@@ -296,7 +285,7 @@ export default function Dashboard() {
   };
 
   // ==================================================
-  // SIDEBAR NAVIGATION
+  // NAVIGATION
   // ==================================================
 
   const goTo = (path) => {
@@ -331,997 +320,629 @@ export default function Dashboard() {
   // ==================================================
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <main className="p-8">
+
+      {/* PAGE TITLE */}
+
+      <div className="mb-8">
+
+        <h1 className="text-3xl font-bold text-gray-800">
+          Dashboard
+        </h1>
+
+        <p className="text-gray-600 mt-2">
+          Welcome back, {user?.full_name || "User"}
+        </p>
+
+      </div>
 
       {/* ==================================================
-          SIDEBAR
+          SUMMARY CARDS
       ================================================== */}
 
-      <aside
+      <div
         className="
-          fixed
-          left-0
-          top-0
-          h-screen
-          w-64
-          bg-blue-600
-          text-white
-          flex
-          flex-col
-          shadow-lg
-          z-50
+          grid
+          grid-cols-1
+          sm:grid-cols-2
+          lg:grid-cols-5
+          gap-5
         "
       >
 
-        {/* LOGO */}
+        {/* INCOME */}
 
-        <div className="px-6 py-5 border-b border-blue-500">
-          <h1 className="text-2xl font-bold">
-            BudgetBuddy
-          </h1>
+        <div className="bg-white rounded-xl shadow p-6">
+
+          <h3 className="text-gray-500">
+            Total Income
+          </h3>
+
+          <p className="text-3xl font-bold text-green-600 mt-3">
+            ₹{totalIncome.toFixed(2)}
+          </p>
+
         </div>
 
-        {/* NAVIGATION */}
+        {/* EXPENSE */}
 
-        <nav className="flex-1 px-4 py-6">
+        <div className="bg-white rounded-xl shadow p-6">
 
-          <div className="space-y-2">
+          <h3 className="text-gray-500">
+            Total Expenses
+          </h3>
 
-            {/* DASHBOARD */}
+          <p className="text-3xl font-bold text-red-600 mt-3">
+            ₹{totalExpenses.toFixed(2)}
+          </p>
 
-            <button
-              onClick={() =>
-                goTo("/dashboard")
-              }
-              className="
-                w-full
-                flex
-                items-center
-                gap-3
-                px-4
-                py-3
-                rounded-lg
-                bg-white
-                text-blue-600
-                font-medium
-                text-left
-              "
-            >
-              <span>🏠</span>
-              <span>Dashboard</span>
-            </button>
+        </div>
 
-            {/* INCOME */}
+        {/* BALANCE */}
 
-            <button
-              onClick={() =>
-                goTo("/income")
-              }
-              className="
-                w-full
-                flex
-                items-center
-                gap-3
-                px-4
-                py-3
-                rounded-lg
-                hover:bg-blue-500
-                transition
-                text-left
-              "
-            >
-              <span>💰</span>
-              <span>Income</span>
-            </button>
+        <div className="bg-white rounded-xl shadow p-6">
 
-            {/* EXPENSE */}
+          <h3 className="text-gray-500">
+            Balance
+          </h3>
 
-            <button
-              onClick={() =>
-                goTo("/expense")
-              }
-              className="
-                w-full
-                flex
-                items-center
-                gap-3
-                px-4
-                py-3
-                rounded-lg
-                hover:bg-blue-500
-                transition
-                text-left
-              "
-            >
-              <span>💳</span>
-              <span>Expense</span>
-            </button>
-
-            {/* BUDGET */}
-
-            <button
-              onClick={() =>
-                goTo("/budget")
-              }
-              className="
-                w-full
-                flex
-                items-center
-                gap-3
-                px-4
-                py-3
-                rounded-lg
-                hover:bg-blue-500
-                transition
-                text-left
-              "
-            >
-              <span>📊</span>
-              <span>Budget</span>
-            </button>
-
-            {/* SAVINGS GOALS */}
-
-            <button
-              onClick={() =>
-                goTo("/savings-goals")
-              }
-              className="
-                w-full
-                flex
-                items-center
-                gap-3
-                px-4
-                py-3
-                rounded-lg
-                hover:bg-blue-500
-                transition
-                text-left
-              "
-            >
-              <span>🎯</span>
-              <span>Savings Goals</span>
-            </button>
-
-            {/* REPORTS */}
-
-            <button
-              onClick={() =>
-                goTo("/reports")
-              }
-              className="
-                w-full
-                flex
-                items-center
-                gap-3
-                px-4
-                py-3
-                rounded-lg
-                hover:bg-blue-500
-                transition
-                text-left
-              "
-            >
-              <span>📈</span>
-              <span>Reports</span>
-            </button>
-
-            {/* ANALYTICS */}
-
-            <button
-              onClick={() =>
-                goTo("/analytics")
-              }
-              className="
-                w-full
-                flex
-                items-center
-                gap-3
-                px-4
-                py-3
-                rounded-lg
-                hover:bg-blue-500
-                transition
-                text-left
-              "
-            >
-              <span>📉</span>
-              <span>Analytics</span>
-            </button>
-
-            {/* BANK ACCOUNT */}
-
-            <button
-              onClick={() =>
-                goTo("/bank-account")
-              }
-              className="
-                w-full
-                flex
-                items-center
-                gap-3
-                px-4
-                py-3
-                rounded-lg
-                hover:bg-blue-500
-                transition
-                text-left
-              "
-            >
-              <span>🏦</span>
-              <span>Bank Account</span>
-            </button>
-
-            {/* PROFILE */}
-
-            <button
-              onClick={() =>
-                goTo("/profile")
-              }
-              className="
-                w-full
-                flex
-                items-center
-                gap-3
-                px-4
-                py-3
-                rounded-lg
-                hover:bg-blue-500
-                transition
-                text-left
-              "
-            >
-              <span>👤</span>
-              <span>Profile</span>
-            </button>
-
-          </div>
-
-        </nav>
-
-        {/* LOGOUT */}
-
-        <div className="px-4 py-5 border-t border-blue-500">
-
-          <button
-            onClick={logout}
-            className="
-              w-full
-              flex
-              items-center
-              gap-3
-              px-4
-              py-3
-              rounded-lg
-              hover:bg-red-500
-              transition
-              text-left
-            "
+          <p
+            className={
+              "text-3xl font-bold mt-3 " +
+              (
+                balance >= 0
+                  ? "text-blue-600"
+                  : "text-red-600"
+              )
+            }
           >
-            <span>🚪</span>
-            <span>Logout</span>
-          </button>
+            ₹{balance.toFixed(2)}
+          </p>
 
         </div>
 
-      </aside>
+        {/* BUDGET */}
+
+        <div className="bg-white rounded-xl shadow p-6">
+
+          <h3 className="text-gray-500">
+            Total Budget
+          </h3>
+
+          <p className="text-3xl font-bold text-purple-600 mt-3">
+            ₹{totalBudget.toFixed(2)}
+          </p>
+
+        </div>
+
+        {/* SAVINGS */}
+
+        <div className="bg-white rounded-xl shadow p-6">
+
+          <h3 className="text-gray-500">
+            Savings Goals
+          </h3>
+
+          <p className="text-3xl font-bold text-yellow-600 mt-3">
+            ₹{totalSavingsGoals.toFixed(2)}
+          </p>
+
+          <p className="text-sm text-gray-500 mt-2">
+            Saved: ₹{totalSavedAmount.toFixed(2)}
+          </p>
+
+        </div>
+
+      </div>
 
       {/* ==================================================
-          MAIN AREA
+          BANK ACCOUNT BALANCE
       ================================================== */}
 
-      <div className="ml-64 min-h-screen">
+      <div className="bg-white rounded-xl shadow p-6 mt-8">
 
-        {/* ==================================================
-            TOP HEADER
-        ================================================== */}
-
-        <header
-          className="
-            bg-white
-            shadow-sm
-            px-8
-            py-4
-            flex
-            justify-between
-            items-center
-          "
-        >
+        <div className="flex justify-between items-center">
 
           <div>
-            <h2 className="text-xl font-semibold text-gray-800">
-              Welcome, {user?.email}
+
+            <h2 className="text-2xl font-bold">
+              Bank Account Balance
             </h2>
-          </div>
 
-          <div className="flex items-center gap-5">
-
-            <span className="text-gray-600">
-              {user?.email}
-            </span>
-
-            {/* NOTIFICATION BELL */}
-
-            <NotificationBell />
-
-            <button
-              onClick={logout}
-              className="
-                bg-red-500
-                hover:bg-red-600
-                text-white
-                px-4
-                py-2
-                rounded-lg
-              "
-            >
-              Logout
-            </button>
-
-          </div>
-
-        </header>
-
-        {/* ==================================================
-            CONTENT
-        ================================================== */}
-
-        <main className="p-8">
-
-          {/* PAGE TITLE */}
-
-          <div className="mb-8">
-
-            <h1 className="text-3xl font-bold text-gray-800">
-              Dashboard
-            </h1>
-
-            <p className="text-gray-600 mt-2">
-              Welcome back, {user?.email}
+            <p className="text-gray-600 mt-1">
+              Total balance across your bank accounts
             </p>
 
           </div>
 
-          {/* ==================================================
-              SUMMARY CARDS
-          ================================================== */}
+          <p className="text-3xl font-bold text-green-600">
+            ₹{totalBankBalance.toFixed(2)}
+          </p>
 
-          <div
+        </div>
+
+      </div>
+
+      {/* ==================================================
+          QUICK ACTIONS
+      ================================================== */}
+
+      <div className="mt-10">
+
+        <h2 className="text-2xl font-semibold mb-4">
+          Quick Actions
+        </h2>
+
+        <div className="flex flex-wrap gap-4">
+
+          <button
+            onClick={() => goTo("/income")}
             className="
-              grid
-              grid-cols-1
-              sm:grid-cols-2
-              lg:grid-cols-5
-              gap-5
+              bg-green-600
+              hover:bg-green-700
+              text-white
+              px-6
+              py-3
+              rounded-lg
             "
           >
+            + Add Income
+          </button>
 
-            {/* INCOME */}
+          <button
+            onClick={() => goTo("/expense")}
+            className="
+              bg-red-600
+              hover:bg-red-700
+              text-white
+              px-6
+              py-3
+              rounded-lg
+            "
+          >
+            + Add Expense
+          </button>
 
-            <div className="bg-white rounded-xl shadow p-6">
+          <button
+            onClick={() => goTo("/budget")}
+            className="
+              bg-blue-600
+              hover:bg-blue-700
+              text-white
+              px-6
+              py-3
+              rounded-lg
+            "
+          >
+            + Set Budget
+          </button>
 
-              <h3 className="text-gray-500">
-                Total Income
-              </h3>
+          <button
+            onClick={() => goTo("/savings-goals")}
+            className="
+              bg-yellow-500
+              hover:bg-yellow-600
+              text-white
+              px-6
+              py-3
+              rounded-lg
+            "
+          >
+            + Savings Goal
+          </button>
 
-              <p className="text-3xl font-bold text-green-600 mt-3">
-                ₹{totalIncome.toFixed(2)}
-              </p>
+        </div>
 
-            </div>
+      </div>
 
-            {/* EXPENSE */}
+      {/* ==================================================
+          LOADING
+      ================================================== */}
 
-            <div className="bg-white rounded-xl shadow p-6">
+      {loading && (
+        <div className="text-center py-10 text-gray-500">
+          Loading dashboard...
+        </div>
+      )}
 
-              <h3 className="text-gray-500">
-                Total Expenses
-              </h3>
+      {/* ==================================================
+          RECENT TRANSACTIONS
+      ================================================== */}
 
-              <p className="text-3xl font-bold text-red-600 mt-3">
-                ₹{totalExpenses.toFixed(2)}
-              </p>
+      {!loading && (
+        <div className="bg-white rounded-xl shadow mt-10 overflow-hidden">
 
-            </div>
+          <div className="p-6 border-b">
 
-            {/* BALANCE */}
-
-            <div className="bg-white rounded-xl shadow p-6">
-
-              <h3 className="text-gray-500">
-                Balance
-              </h3>
-
-              <p
-                className={
-                  "text-3xl font-bold mt-3 " +
-                  (
-                    balance >= 0
-                      ? "text-blue-600"
-                      : "text-red-600"
-                  )
-                }
-              >
-                ₹{balance.toFixed(2)}
-              </p>
-
-            </div>
-
-            {/* BUDGET */}
-
-            <div className="bg-white rounded-xl shadow p-6">
-
-              <h3 className="text-gray-500">
-                Total Budget
-              </h3>
-
-              <p className="text-3xl font-bold text-purple-600 mt-3">
-                ₹{totalBudget.toFixed(2)}
-              </p>
-
-            </div>
-
-            {/* SAVINGS GOALS */}
-
-            <div className="bg-white rounded-xl shadow p-6">
-
-              <h3 className="text-gray-500">
-                Savings Goals
-              </h3>
-
-              <p className="text-3xl font-bold text-yellow-600 mt-3">
-                ₹{totalSavingsGoals.toFixed(2)}
-              </p>
-
-              <p className="text-sm text-gray-500 mt-2">
-                Saved: ₹{totalSavedAmount.toFixed(2)}
-              </p>
-
-            </div>
-
-          </div>
-
-          {/* ==================================================
-              BANK ACCOUNT BALANCE
-          ================================================== */}
-
-          <div className="bg-white rounded-xl shadow p-6 mt-8">
-
-            <div className="flex justify-between items-center">
-
-              <div>
-
-                <h2 className="text-2xl font-bold">
-                  Bank Account Balance
-                </h2>
-
-                <p className="text-gray-600 mt-1">
-                  Total balance across your bank accounts
-                </p>
-
-              </div>
-
-              <p className="text-3xl font-bold text-green-600">
-                ₹{totalBankBalance.toFixed(2)}
-              </p>
-
-            </div>
-
-          </div>
-
-          {/* ==================================================
-              QUICK ACTIONS
-          ================================================== */}
-
-          <div className="mt-10">
-
-            <h2 className="text-2xl font-semibold mb-4">
-              Quick Actions
+            <h2 className="text-2xl font-bold">
+              Recent Transactions
             </h2>
 
-            <div className="flex flex-wrap gap-4">
-
-              <button
-                onClick={() =>
-                  goTo("/income")
-                }
-                className="
-                  bg-green-600
-                  hover:bg-green-700
-                  text-white
-                  px-6
-                  py-3
-                  rounded-lg
-                "
-              >
-                + Add Income
-              </button>
-
-              <button
-                onClick={() =>
-                  goTo("/expense")
-                }
-                className="
-                  bg-red-600
-                  hover:bg-red-700
-                  text-white
-                  px-6
-                  py-3
-                  rounded-lg
-                "
-              >
-                + Add Expense
-              </button>
-
-              <button
-                onClick={() =>
-                  goTo("/budget")
-                }
-                className="
-                  bg-blue-600
-                  hover:bg-blue-700
-                  text-white
-                  px-6
-                  py-3
-                  rounded-lg
-                "
-              >
-                + Set Budget
-              </button>
-
-              <button
-                onClick={() =>
-                  goTo("/savings-goals")
-                }
-                className="
-                  bg-yellow-500
-                  hover:bg-yellow-600
-                  text-white
-                  px-6
-                  py-3
-                  rounded-lg
-                "
-              >
-                + Savings Goal
-              </button>
-
-            </div>
+            <p className="text-gray-600 mt-1">
+              Your latest income and expenses
+            </p>
 
           </div>
 
-          {/* ==================================================
-              LOADING
-          ================================================== */}
+          <div className="overflow-x-auto">
 
-          {loading && (
-            <div className="text-center py-10 text-gray-500">
-              Loading dashboard...
-            </div>
-          )}
+            <table className="w-full">
 
-          {/* ==================================================
-              RECENT TRANSACTIONS
-          ================================================== */}
+              <thead className="bg-gray-50">
 
-          {!loading && (
-            <div className="bg-white rounded-xl shadow mt-10 overflow-hidden">
+                <tr>
 
-              <div className="p-6 border-b">
+                  <th className="text-left p-4">
+                    Date
+                  </th>
 
-                <h2 className="text-2xl font-bold">
-                  Recent Transactions
-                </h2>
+                  <th className="text-left p-4">
+                    Description
+                  </th>
 
-                <p className="text-gray-600 mt-1">
-                  Your latest income and expenses
-                </p>
+                  <th className="text-left p-4">
+                    Type
+                  </th>
 
-              </div>
+                  <th className="text-left p-4">
+                    Amount
+                  </th>
 
-              <div className="overflow-x-auto">
+                </tr>
 
-                <table className="w-full">
+              </thead>
 
-                  <thead className="bg-gray-50">
+              <tbody>
 
-                    <tr>
+                {transactions.length === 0 ? (
 
-                      <th className="text-left p-4">
-                        Date
-                      </th>
+                  <tr>
 
-                      <th className="text-left p-4">
-                        Description
-                      </th>
+                    <td
+                      colSpan="4"
+                      className="text-center text-gray-500 p-8"
+                    >
+                      No transactions available
+                    </td>
 
-                      <th className="text-left p-4">
-                        Type
-                      </th>
-
-                      <th className="text-left p-4">
-                        Amount
-                      </th>
-
-                    </tr>
-
-                  </thead>
-
-                  <tbody>
-
-                    {transactions.length === 0 ? (
-
-                      <tr>
-
-                        <td
-                          colSpan="4"
-                          className="text-center text-gray-500 p-8"
-                        >
-                          No transactions available
-                        </td>
-
-                      </tr>
-
-                    ) : (
-
-                      transactions.map(
-                        (transaction) => (
-
-                          <tr
-                            key={transaction.id}
-                            className="border-t"
-                          >
-
-                            <td className="p-4">
-                              {formatDate(
-                                transaction.date
-                              )}
-                            </td>
-
-                            <td className="p-4">
-                              {transaction.name}
-                            </td>
-
-                            <td className="p-4">
-
-                              <span
-                                className={
-                                  "px-3 py-1 rounded-full text-sm " +
-                                  (
-                                    transaction.type ===
-                                    "Income"
-                                      ? "bg-green-100 text-green-700"
-                                      : "bg-red-100 text-red-700"
-                                  )
-                                }
-                              >
-                                {transaction.type}
-                              </span>
-
-                            </td>
-
-                            <td
-                              className={
-                                "p-4 font-semibold " +
-                                (
-                                  transaction.type ===
-                                  "Income"
-                                    ? "text-green-600"
-                                    : "text-red-600"
-                                )
-                              }
-                            >
-
-                              {transaction.type ===
-                              "Income"
-                                ? "+"
-                                : "-"}
-
-                              ₹
-                              {transaction.amount.toFixed(
-                                2
-                              )}
-
-                            </td>
-
-                          </tr>
-
-                        )
-                      )
-
-                    )}
-
-                  </tbody>
-
-                </table>
-
-              </div>
-
-            </div>
-          )}
-
-          {/* ==================================================
-              BUDGET SUMMARY
-          ================================================== */}
-
-          {!loading && (
-            <div className="bg-white rounded-xl shadow mt-10 overflow-hidden">
-
-              <div className="p-6 border-b">
-
-                <h2 className="text-2xl font-bold">
-                  Budgets
-                </h2>
-
-                <p className="text-gray-600 mt-1">
-                  Your current monthly budgets
-                </p>
-
-              </div>
-
-              <div className="overflow-x-auto">
-
-                <table className="w-full">
-
-                  <thead className="bg-gray-50">
-
-                    <tr>
-
-                      <th className="text-left p-4">
-                        Category
-                      </th>
-
-                      <th className="text-left p-4">
-                        Monthly Limit
-                      </th>
-
-                      <th className="text-left p-4">
-                        Month
-                      </th>
-
-                    </tr>
-
-                  </thead>
-
-                  <tbody>
-
-                    {budgets.length === 0 ? (
-
-                      <tr>
-
-                        <td
-                          colSpan="3"
-                          className="text-center text-gray-500 p-8"
-                        >
-                          No budgets available
-                        </td>
-
-                      </tr>
-
-                    ) : (
-
-                      budgets.map(
-                        (budget) => (
-
-                          <tr
-                            key={budget.id}
-                            className="border-t"
-                          >
-
-                            <td className="p-4">
-                              {budget.category}
-                            </td>
-
-                            <td className="p-4 font-semibold text-purple-600">
-                              ₹
-                              {Number(
-                                budget.monthly_limit ||
-                                0
-                              ).toFixed(2)}
-                            </td>
-
-                            <td className="p-4">
-                              {budget.month_year}
-                            </td>
-
-                          </tr>
-
-                        )
-                      )
-
-                    )}
-
-                  </tbody>
-
-                </table>
-
-              </div>
-
-            </div>
-          )}
-
-          {/* ==================================================
-              SAVINGS GOALS PROGRESS
-          ================================================== */}
-
-          {!loading && (
-            <div className="bg-white rounded-xl shadow mt-10 overflow-hidden">
-
-              <div className="p-6 border-b">
-
-                <h2 className="text-2xl font-bold">
-                  Savings Goals
-                </h2>
-
-                <p className="text-gray-600 mt-1">
-                  Track your progress toward each savings target
-                </p>
-
-              </div>
-
-              <div className="p-6">
-
-                {savingsGoals.length === 0 ? (
-
-                  <div className="text-center text-gray-500 py-8">
-                    No savings goals available
-                  </div>
+                  </tr>
 
                 ) : (
 
-                  <div className="grid gap-6">
+                  transactions.map(
+                    (transaction) => (
 
-                    {savingsGoals.map(
-                      (goal) => {
+                      <tr
+                        key={transaction.id}
+                        className="border-t"
+                      >
 
-                        const targetAmount =
-                          Number(
-                            goal.target_amount || 0
-                          );
+                        <td className="p-4">
+                          {formatDate(
+                            transaction.date
+                          )}
+                        </td>
 
-                        const savedAmount =
-                          Number(
-                            goal.current_amount || 0
-                          );
+                        <td className="p-4">
+                          {transaction.name}
+                        </td>
 
-                        const remainingAmount =
-                          Math.max(
-                            targetAmount -
-                            savedAmount,
-                            0
-                          );
+                        <td className="p-4">
 
-                        const progress =
-                          calculateProgress(goal);
-
-                        return (
-                          <div
-                            key={goal.id}
-                            className="
-                              border
-                              rounded-xl
-                              p-5
-                              hover:shadow-md
-                              transition
-                            "
+                          <span
+                            className={
+                              "px-3 py-1 rounded-full text-sm " +
+                              (
+                                transaction.type === "Income"
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-red-100 text-red-700"
+                              )
+                            }
                           >
+                            {transaction.type}
+                          </span>
 
-                            {/* GOAL HEADER */}
+                        </td>
 
-                            <div className="flex justify-between items-start mb-4">
+                        <td
+                          className={
+                            "p-4 font-semibold " +
+                            (
+                              transaction.type === "Income"
+                                ? "text-green-600"
+                                : "text-red-600"
+                            )
+                          }
+                        >
+                          {transaction.type === "Income"
+                            ? "+"
+                            : "-"}
+                          ₹
+                          {transaction.amount.toFixed(2)}
+                        </td>
 
-                              <div>
+                      </tr>
 
-                                <h3 className="text-xl font-bold text-gray-800">
-                                  {goal.title || "-"}
-                                </h3>
+                    )
+                  )
 
-                                <p className="text-sm text-gray-500 mt-1">
-                                  Target: ₹
-                                  {targetAmount.toFixed(2)}
-                                </p>
+                )}
 
-                              </div>
+              </tbody>
 
-                              <span
-                                className={
-                                  "px-3 py-1 rounded-full text-sm " +
-                                  (
-                                    goal.status ===
-                                    "completed"
-                                      ? "bg-green-100 text-green-700"
-                                      : "bg-yellow-100 text-yellow-700"
-                                  )
-                                }
-                              >
-                                {goal.status ===
-                                "completed"
-                                  ? "Completed"
-                                  : "In Progress"}
-                              </span>
+            </table>
 
-                            </div>
+          </div>
 
-                            {/* AMOUNTS */}
+        </div>
+      )}
 
-                            <div className="flex justify-between mb-2">
+      {/* ==================================================
+          BUDGET SUMMARY
+      ================================================== */}
 
-                              <span className="font-semibold text-green-600">
-                                Saved: ₹
-                                {savedAmount.toFixed(2)}
-                              </span>
+      {!loading && (
+        <div className="bg-white rounded-xl shadow mt-10 overflow-hidden">
 
-                              <span className="text-gray-600">
-                                Remaining: ₹
-                                {remainingAmount.toFixed(2)}
-                              </span>
+          <div className="p-6 border-b">
 
-                            </div>
+            <h2 className="text-2xl font-bold">
+              Budgets
+            </h2>
 
-                            {/* PROGRESS BAR */}
+            <p className="text-gray-600 mt-1">
+              Your current monthly budgets
+            </p>
 
-                            <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+          </div>
 
-                              <div
-                                className={
-                                  "h-4 rounded-full transition-all duration-500 " +
-                                  (
-                                    progress >= 100
-                                      ? "bg-green-500"
-                                      : "bg-blue-600"
-                                  )
-                                }
-                                style={{
-                                  width: `${progress}%`,
-                                }}
-                              />
+          <div className="overflow-x-auto">
 
-                            </div>
+            <table className="w-full">
 
-                            {/* PROGRESS TEXT */}
+              <thead className="bg-gray-50">
 
-                            <div className="flex justify-between items-center mt-2">
+                <tr>
 
-                              <span className="text-sm text-gray-600">
-                                {progress.toFixed(1)}% completed
-                              </span>
+                  <th className="text-left p-4">
+                    Category
+                  </th>
 
-                              {progress >= 100 && (
-                                <span className="text-sm font-semibold text-green-600">
-                                  Goal completed 🎉
-                                </span>
-                              )}
+                  <th className="text-left p-4">
+                    Monthly Limit
+                  </th>
 
-                            </div>
+                  <th className="text-left p-4">
+                    Month
+                  </th>
 
-                            {/* TARGET DATE */}
+                </tr>
 
-                            {goal.target_date && (
-                              <p className="text-sm text-gray-500 mt-3">
-                                Target date:{" "}
-                                {formatDate(
-                                  goal.target_date
-                                )}
-                              </p>
-                            )}
+              </thead>
+
+              <tbody>
+
+                {budgets.length === 0 ? (
+
+                  <tr>
+
+                    <td
+                      colSpan="3"
+                      className="text-center text-gray-500 p-8"
+                    >
+                      No budgets available
+                    </td>
+
+                  </tr>
+
+                ) : (
+
+                  budgets.map(
+                    (budget) => (
+
+                      <tr
+                        key={budget.id}
+                        className="border-t"
+                      >
+
+                        <td className="p-4">
+                          {budget.category}
+                        </td>
+
+                        <td className="p-4 font-semibold text-purple-600">
+                          ₹
+                          {Number(
+                            budget.monthly_limit || 0
+                          ).toFixed(2)}
+                        </td>
+
+                        <td className="p-4">
+                          {budget.month_year}
+                        </td>
+
+                      </tr>
+
+                    )
+                  )
+
+                )}
+
+              </tbody>
+
+            </table>
+
+          </div>
+
+        </div>
+      )}
+
+      {/* ==================================================
+          SAVINGS GOALS
+      ================================================== */}
+
+      {!loading && (
+        <div className="bg-white rounded-xl shadow mt-10 overflow-hidden">
+
+          <div className="p-6 border-b">
+
+            <h2 className="text-2xl font-bold">
+              Savings Goals
+            </h2>
+
+            <p className="text-gray-600 mt-1">
+              Track your progress toward each savings target
+            </p>
+
+          </div>
+
+          <div className="p-6">
+
+            {savingsGoals.length === 0 ? (
+
+              <div className="text-center text-gray-500 py-8">
+                No savings goals available
+              </div>
+
+            ) : (
+
+              <div className="grid gap-6">
+
+                {savingsGoals.map(
+                  (goal) => {
+
+                    const targetAmount =
+                      Number(
+                        goal.target_amount || 0
+                      );
+
+                    const savedAmount =
+                      Number(
+                        goal.current_amount || 0
+                      );
+
+                    const remainingAmount =
+                      Math.max(
+                        targetAmount -
+                        savedAmount,
+                        0
+                      );
+
+                    const progress =
+                      calculateProgress(goal);
+
+                    return (
+                      <div
+                        key={goal.id}
+                        className="
+                          border
+                          rounded-xl
+                          p-5
+                          hover:shadow-md
+                          transition
+                        "
+                      >
+
+                        <div className="flex justify-between items-start mb-4">
+
+                          <div>
+
+                            <h3 className="text-xl font-bold text-gray-800">
+                              {goal.title || "-"}
+                            </h3>
+
+                            <p className="text-sm text-gray-500 mt-1">
+                              Target: ₹
+                              {targetAmount.toFixed(2)}
+                            </p>
 
                           </div>
-                        );
-                      }
-                    )}
 
-                  </div>
+                          <span
+                            className={
+                              "px-3 py-1 rounded-full text-sm " +
+                              (
+                                goal.status === "completed"
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-yellow-100 text-yellow-700"
+                              )
+                            }
+                          >
+                            {goal.status === "completed"
+                              ? "Completed"
+                              : "In Progress"}
+                          </span>
 
+                        </div>
+
+                        <div className="flex justify-between mb-2">
+
+                          <span className="font-semibold text-green-600">
+                            Saved: ₹
+                            {savedAmount.toFixed(2)}
+                          </span>
+
+                          <span className="text-gray-600">
+                            Remaining: ₹
+                            {remainingAmount.toFixed(2)}
+                          </span>
+
+                        </div>
+
+                        <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+
+                          <div
+                            className={
+                              "h-4 rounded-full transition-all duration-500 " +
+                              (
+                                progress >= 100
+                                  ? "bg-green-500"
+                                  : "bg-blue-600"
+                              )
+                            }
+                            style={{
+                              width: `${progress}%`,
+                            }}
+                          />
+
+                        </div>
+
+                        <div className="flex justify-between items-center mt-2">
+
+                          <span className="text-sm text-gray-600">
+                            {progress.toFixed(1)}% completed
+                          </span>
+
+                          {progress >= 100 && (
+                            <span className="text-sm font-semibold text-green-600">
+                              Goal completed 🎉
+                            </span>
+                          )}
+
+                        </div>
+
+                        {goal.target_date && (
+                          <p className="text-sm text-gray-500 mt-3">
+                            Target date:{" "}
+                            {formatDate(
+                              goal.target_date
+                            )}
+                          </p>
+                        )}
+
+                      </div>
+                    );
+                  }
                 )}
 
               </div>
 
-            </div>
-          )}
+            )}
 
-        </main>
+          </div>
 
-      </div>
+        </div>
+      )}
 
-    </div>
+    </main>
   );
 }

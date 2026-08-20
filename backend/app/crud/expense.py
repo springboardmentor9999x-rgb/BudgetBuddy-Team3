@@ -30,7 +30,7 @@ def get_expense(
 
 
 # ==========================================================
-# GET BUDGET FOR CATEGORY
+# GET BUDGET FOR CATEGORY AND MONTH
 # ==========================================================
 
 def get_budget_for_category(
@@ -62,7 +62,12 @@ def get_total_spent_this_month(
     month: int
 ):
     total = (
-        db.query(func.sum(Expense.amount))
+        db.query(
+            func.coalesce(
+                func.sum(Expense.amount),
+                0
+            )
+        )
         .filter(
             Expense.user_id == user_id,
             Expense.category == category,
@@ -72,7 +77,120 @@ def get_total_spent_this_month(
         .scalar()
     )
 
-    return total or 0
+    return float(total or 0)
+
+
+# ==========================================================
+# CHECK BUDGET AND CREATE ALERT
+# ==========================================================
+
+def check_budget_alert(
+    db: Session,
+    user_id: int,
+    expense: Expense
+):
+    """
+    Check whether the expense causes the user's
+    monthly category budget to be exceeded.
+
+    If the budget is exceeded, create one unread
+    budget notification for that category/month.
+    """
+
+    expense_date = expense.date
+
+    year = expense_date.year
+    month = expense_date.month
+
+    # Budget uses YYYY-MM format
+    month_year = f"{year:04d}-{month:02d}"
+
+    # ------------------------------------------------------
+    # FIND MATCHING BUDGET
+    # ------------------------------------------------------
+
+    budget = get_budget_for_category(
+        db=db,
+        user_id=user_id,
+        category=expense.category,
+        month_year=month_year
+    )
+
+    if not budget:
+        return None
+
+    # ------------------------------------------------------
+    # CALCULATE TOTAL SPENDING
+    # ------------------------------------------------------
+
+    total_spent = get_total_spent_this_month(
+        db=db,
+        user_id=user_id,
+        category=expense.category,
+        year=year,
+        month=month
+    )
+
+    # ------------------------------------------------------
+    # CHECK WHETHER BUDGET IS EXCEEDED
+    # ------------------------------------------------------
+
+    if total_spent <= budget.monthly_limit:
+        return None
+
+    # ------------------------------------------------------
+    # CHECK FOR EXISTING BUDGET ALERT
+    # ------------------------------------------------------
+
+    notification_message = (
+        f"You've exceeded your {expense.category} budget. "
+        f"Spent ₹{total_spent:.2f} of ₹{budget.monthly_limit:.2f}."
+    )
+
+    existing_notification = (
+        db.query(Notification)
+        .filter(
+            Notification.user_id == user_id,
+            Notification.type == "budget_alert",
+            Notification.message.like(
+                f"You've exceeded your {expense.category} budget.%"
+            ),
+            Notification.is_read == False
+        )
+        .first()
+    )
+
+    # ------------------------------------------------------
+    # DON'T CREATE DUPLICATE ALERT
+    # ------------------------------------------------------
+
+    if existing_notification:
+        # Update the existing notification with the
+        # latest spending amount.
+        existing_notification.message = notification_message
+
+        db.commit()
+        db.refresh(existing_notification)
+
+        return existing_notification
+
+    # ------------------------------------------------------
+    # CREATE NEW NOTIFICATION
+    # ------------------------------------------------------
+
+    notification = Notification(
+        user_id=user_id,
+        message=notification_message,
+        type="budget_alert",
+        is_read=False,
+        created_at=datetime.utcnow()
+    )
+
+    db.add(notification)
+    db.commit()
+    db.refresh(notification)
+
+    return notification
 
 
 # ==========================================================
@@ -122,64 +240,22 @@ def create_expense(
     if account:
         account.balance -= expense_in.amount
 
-    # Save expense first so it can be included
-    # in the monthly total.
+    # ------------------------------------------------------
+    # SAVE EXPENSE
+    # ------------------------------------------------------
+
     db.commit()
     db.refresh(expense)
 
     # ======================================================
-    # BUDGET ALERT LOGIC
+    # BUDGET ALERT
     # ======================================================
 
-    expense_date = expense.date
-
-    year = expense_date.year
-    month = expense_date.month
-
-    # Budget uses YYYY-MM format
-    month_year = f"{year:04d}-{month:02d}"
-
-    # ------------------------------------------------------
-    # FIND BUDGET
-    # ------------------------------------------------------
-
-    budget = get_budget_for_category(
-        db,
-        user_id,
-        expense.category,
-        month_year
+    check_budget_alert(
+        db=db,
+        user_id=user_id,
+        expense=expense
     )
-
-    if budget:
-
-        # --------------------------------------------------
-        # CALCULATE TOTAL SPENT
-        # --------------------------------------------------
-
-        total_spent = get_total_spent_this_month(
-            db,
-            user_id,
-            expense.category,
-            year,
-            month
-        )
-
-        # --------------------------------------------------
-        # CREATE NOTIFICATION IF BUDGET EXCEEDED
-        # --------------------------------------------------
-
-        if total_spent > budget.monthly_limit:
-
-            notification = Notification(
-                user_id=user_id,
-                message=f"You've exceeded your {expense.category} budget",
-                type="budget_alert",
-                is_read=False,
-                created_at=datetime.utcnow()
-            )
-
-            db.add(notification)
-            db.commit()
 
     return expense
 
@@ -286,6 +362,16 @@ def update_expense(
 
     db.commit()
     db.refresh(expense)
+
+    # ======================================================
+    # CHECK BUDGET AFTER UPDATE
+    # ======================================================
+
+    check_budget_alert(
+        db=db,
+        user_id=user_id,
+        expense=expense
+    )
 
     return expense
 

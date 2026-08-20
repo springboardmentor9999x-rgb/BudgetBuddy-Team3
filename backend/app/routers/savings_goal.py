@@ -18,7 +18,10 @@ router = APIRouter(
 )
 
 
-# CREATE
+# ==========================================================
+# CREATE SAVINGS GOAL
+# ==========================================================
+
 @router.post(
     "/",
     response_model=SavingsGoalOut,
@@ -36,7 +39,10 @@ def create_goal(
     )
 
 
-# GET ALL
+# ==========================================================
+# GET ALL SAVINGS GOALS
+# ==========================================================
+
 @router.get(
     "/",
     response_model=list[SavingsGoalOut]
@@ -55,7 +61,10 @@ def get_goals(
     )
 
 
-# CONTRIBUTE
+# ==========================================================
+# CONTRIBUTE TO SAVINGS GOAL
+# ==========================================================
+
 @router.patch(
     "/{goal_id}/contribute",
     response_model=SavingsGoalOut
@@ -66,12 +75,21 @@ def contribute(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    goal = savings_goal_crud.contribute_to_savings_goal(
-        db,
-        goal_id,
-        current_user.id,
-        contribution.amount
-    )
+    try:
+
+        goal = savings_goal_crud.contribute_to_savings_goal(
+            db,
+            goal_id,
+            current_user.id,
+            contribution.amount
+        )
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
     if not goal:
         raise HTTPException(
@@ -82,7 +100,10 @@ def contribute(
     return goal
 
 
-# GET ONE
+# ==========================================================
+# GET ONE SAVINGS GOAL
+# ==========================================================
+
 @router.get(
     "/{goal_id}",
     response_model=SavingsGoalOut
@@ -107,7 +128,10 @@ def get_goal(
     return goal
 
 
-# UPDATE
+# ==========================================================
+# UPDATE SAVINGS GOAL
+# ==========================================================
+
 @router.put(
     "/{goal_id}",
     response_model=SavingsGoalOut
@@ -134,7 +158,10 @@ def update_goal(
     return goal
 
 
-# DELETE
+# ==========================================================
+# DELETE SAVINGS GOAL
+# ==========================================================
+
 @router.delete(
     "/{goal_id}",
     response_model=SavingsGoalOut
