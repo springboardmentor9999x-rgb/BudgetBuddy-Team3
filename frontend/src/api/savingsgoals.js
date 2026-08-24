@@ -1,49 +1,93 @@
 import api from "./axios";
 
-// ================================
-// SAVINGS GOALS API
-// ================================
+// ==========================================
+// GET ALL SAVINGS GOALS
+// ==========================================
 
-// Get all savings goals
 export const getSavingsGoals = async () => {
   const response = await api.get("/goals/");
   return response.data;
 };
 
-// Get one savings goal
+
+// ==========================================
+// GET SINGLE SAVINGS GOAL
+// ==========================================
+
 export const getSavingsGoal = async (id) => {
   const response = await api.get(`/goals/${id}`);
   return response.data;
 };
 
-// Create savings goal
+
+// ==========================================
+// CREATE SAVINGS GOAL
+// ==========================================
+
 export const addSavingsGoal = async (goalData) => {
-  const response = await api.post("/goals/", goalData);
+  const response = await api.post(
+    "/goals/",
+    goalData
+  );
+
   return response.data;
 };
 
-// Update savings goal
-export const updateSavingsGoal = async (id, goalData) => {
+
+// ==========================================
+// UPDATE SAVINGS GOAL
+// ==========================================
+
+export const updateSavingsGoal = async (
+  id,
+  goalData
+) => {
   const response = await api.put(
     `/goals/${id}`,
     goalData
   );
+
   return response.data;
 };
 
-// Delete savings goal
+
+// ==========================================
+// DELETE SAVINGS GOAL
+// ==========================================
+
 export const deleteSavingsGoal = async (id) => {
-  const response = await api.delete(`/goals/${id}`);
+  const response = await api.delete(
+    `/goals/${id}`
+  );
+
   return response.data;
 };
 
-// Contribute to savings goal
-export const contributeToSavingsGoal = async (id, amount) => {
+
+// ==========================================
+// CONTRIBUTE TO SAVINGS GOAL
+// ==========================================
+//
+// IMPORTANT:
+// The backend already knows which bank account
+// belongs to the goal through:
+//
+// goal.bank_account_id
+//
+// Therefore only amount is sent.
+//
+
+export const contributeToSavingsGoal = async (
+  id,
+  amount
+) => {
+
   const response = await api.patch(
     `/goals/${id}/contribute`,
     {
-      amount: amount,
+      amount: amount
     }
   );
+
   return response.data;
 };

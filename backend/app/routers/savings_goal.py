@@ -32,11 +32,21 @@ def create_goal(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return savings_goal_crud.create_savings_goal(
-        db,
-        current_user.id,
-        goal_in
-    )
+
+    try:
+
+        return savings_goal_crud.create_savings_goal(
+            db,
+            current_user.id,
+            goal_in
+        )
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
 
 # ==========================================================
@@ -53,6 +63,7 @@ def get_goals(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+
     return savings_goal_crud.get_savings_goals_by_user(
         db,
         current_user.id,
@@ -75,6 +86,7 @@ def contribute(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+
     try:
 
         goal = savings_goal_crud.contribute_to_savings_goal(
@@ -92,6 +104,7 @@ def contribute(
         )
 
     if not goal:
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Savings goal not found"
@@ -113,6 +126,7 @@ def get_goal(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+
     goal = savings_goal_crud.get_savings_goal(
         db,
         goal_id,
@@ -120,6 +134,7 @@ def get_goal(
     )
 
     if not goal:
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Savings goal not found"
@@ -142,14 +157,25 @@ def update_goal(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    goal = savings_goal_crud.update_savings_goal(
-        db,
-        goal_id,
-        current_user.id,
-        goal_in
-    )
+
+    try:
+
+        goal = savings_goal_crud.update_savings_goal(
+            db,
+            goal_id,
+            current_user.id,
+            goal_in
+        )
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
     if not goal:
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Savings goal not found"
@@ -171,13 +197,24 @@ def delete_goal(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    goal = savings_goal_crud.delete_savings_goal(
-        db,
-        goal_id,
-        current_user.id
-    )
+
+    try:
+
+        goal = savings_goal_crud.delete_savings_goal(
+            db,
+            goal_id,
+            current_user.id
+        )
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
     if not goal:
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Savings goal not found"

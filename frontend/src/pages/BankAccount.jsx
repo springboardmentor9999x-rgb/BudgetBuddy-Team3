@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 
-import BankAccountForm from "../components/bankAccount/BankAccountForm";
+import BankAccountForm from "../components/bankaccount/BankAccountForm";
 
 import {
   getBankAccounts,
@@ -33,6 +33,19 @@ export default function BankAccount() {
   const [loading, setLoading] = useState(false);
 
   const [fetching, setFetching] = useState(true);
+
+  // ==========================================
+  // DELETE CONFIRMATION
+  // ==========================================
+
+  const [deleteAccountId, setDeleteAccountId] =
+    useState(null);
+
+  const [deleteAccountName, setDeleteAccountName] =
+    useState("");
+
+  const [deleting, setDeleting] =
+    useState(false);
 
 
   // ==========================================
@@ -171,21 +184,27 @@ export default function BankAccount() {
 
     if (!form.bank_name.trim()) {
 
-      toast.error("Please enter bank name");
+      toast.error(
+        "Please enter bank name"
+      );
 
       return;
     }
 
     if (!form.account_number.trim()) {
 
-      toast.error("Please enter account number");
+      toast.error(
+        "Please enter account number"
+      );
 
       return;
     }
 
     if (!form.account_type) {
 
-      toast.error("Please select account type");
+      toast.error(
+        "Please select account type"
+      );
 
       return;
     }
@@ -204,7 +223,9 @@ export default function BankAccount() {
     try {
 
       const payload = {
-        bank_name: form.bank_name.trim(),
+
+        bank_name:
+          form.bank_name.trim(),
 
         account_number:
           form.account_number.trim(),
@@ -214,6 +235,7 @@ export default function BankAccount() {
 
         balance:
           Number(form.balance || 0),
+
       };
 
 
@@ -240,7 +262,9 @@ export default function BankAccount() {
 
       else {
 
-        await addBankAccount(payload);
+        await addBankAccount(
+          payload
+        );
 
         toast.success(
           "Bank account added successfully"
@@ -249,7 +273,9 @@ export default function BankAccount() {
       }
 
 
-      // Refresh list
+      // ==================================
+      // REFRESH LIST
+      // ==================================
 
       await fetchAccounts();
 
@@ -278,28 +304,68 @@ export default function BankAccount() {
 
 
   // ==========================================
-  // DELETE
+  // OPEN DELETE CONFIRMATION
   // ==========================================
 
-  const handleDelete = async (id) => {
+  const handleDelete = (account) => {
 
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this bank account?"
+    setDeleteAccountId(account.id);
+
+    setDeleteAccountName(
+      account.bank_name || "this bank account"
     );
 
-    if (!confirmed) {
+  };
+
+
+  // ==========================================
+  // CANCEL DELETE
+  // ==========================================
+
+  const cancelDelete = () => {
+
+    if (deleting) {
       return;
     }
 
+    setDeleteAccountId(null);
+
+    setDeleteAccountName("");
+
+  };
+
+
+  // ==========================================
+  // CONFIRM DELETE
+  // ==========================================
+
+  const confirmDelete = async () => {
+
+    if (!deleteAccountId) {
+      return;
+    }
+
+    setDeleting(true);
+
     try {
 
-      await deleteBankAccount(id);
+      await deleteBankAccount(
+        deleteAccountId
+      );
 
       toast.success(
         "Bank account deleted successfully"
       );
 
+      // Refresh account list
+
       await fetchAccounts();
+
+      // Close confirmation popup
+
+      setDeleteAccountId(null);
+
+      setDeleteAccountName("");
 
     } catch (error) {
 
@@ -312,6 +378,10 @@ export default function BankAccount() {
         error.response?.data?.detail ||
         "Failed to delete bank account"
       );
+
+    } finally {
+
+      setDeleting(false);
 
     }
 
@@ -378,6 +448,7 @@ export default function BankAccount() {
 
 
           <button
+            type="button"
             onClick={handleAdd}
             className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg"
           >
@@ -476,9 +547,7 @@ export default function BankAccount() {
                       colSpan="6"
                       className="text-center text-gray-500 p-10"
                     >
-
                       No bank accounts added yet.
-
                     </td>
 
                   </tr>
@@ -514,7 +583,10 @@ export default function BankAccount() {
                           {"*".repeat(
                             Math.max(
                               0,
-                              (account.account_number?.length || 0) - 4
+                              (
+                                account.account_number?.length ||
+                                0
+                              ) - 4
                             )
                           )}
 
@@ -549,6 +621,7 @@ export default function BankAccount() {
                           <div className="flex gap-2">
 
                             <button
+                              type="button"
                               onClick={() =>
                                 handleEdit(account)
                               }
@@ -559,8 +632,9 @@ export default function BankAccount() {
 
 
                             <button
+                              type="button"
                               onClick={() =>
-                                handleDelete(account.id)
+                                handleDelete(account)
                               }
                               className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg"
                             >
@@ -588,8 +662,110 @@ export default function BankAccount() {
 
       </div>
 
+
+      {/* ==========================================
+          CUSTOM DELETE CONFIRMATION MODAL
+      ========================================== */}
+
+      {deleteAccountId !== null && (
+
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl">
+
+            {/* MODAL HEADER */}
+
+            <div className="p-6 border-b">
+
+              <div className="flex items-center gap-3">
+
+                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+
+                  <span className="text-red-600 text-xl">
+                    !
+                  </span>
+
+                </div>
+
+                <div>
+
+                  <h3 className="text-xl font-bold text-gray-800">
+                    Delete Bank Account
+                  </h3>
+
+                  <p className="text-sm text-gray-500">
+                    This action cannot be undone.
+                  </p>
+
+                </div>
+
+              </div>
+
+            </div>
+
+
+            {/* MODAL CONTENT */}
+
+            <div className="p-6">
+
+              <p className="text-gray-700">
+
+                Are you sure you want to delete{" "}
+
+                <span className="font-semibold text-gray-900">
+                  {deleteAccountName}
+                </span>
+
+                ?
+
+              </p>
+
+              <p className="text-sm text-gray-500 mt-3">
+
+                Any income, expense, or other records linked
+                to this account must remain valid.
+
+              </p>
+
+            </div>
+
+
+            {/* MODAL BUTTONS */}
+
+            <div className="p-6 pt-0 flex justify-end gap-3">
+
+              <button
+                type="button"
+                onClick={cancelDelete}
+                disabled={deleting}
+                className="px-5 py-2.5 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+
+              <button
+                type="button"
+                onClick={confirmDelete}
+                disabled={deleting}
+                className="px-5 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium disabled:opacity-50"
+              >
+
+                {deleting
+                  ? "Deleting..."
+                  : "Delete Account"}
+
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      )}
+
     </main>
 
   );
-
 }

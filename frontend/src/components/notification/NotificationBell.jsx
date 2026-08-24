@@ -70,17 +70,44 @@ export default function NotificationBell() {
     }
   };
 
-  const formatDate = (date) => {
-    if (!date) return "";
+const formatDate = (date) => {
+  if (!date) return "";
 
-    return new Date(date).toLocaleString("en-IN", {
+  try {
+    let dateString = String(date);
+
+    // Backend sends UTC datetime without timezone
+    // Example:
+    // 2026-08-24T03:56:00
+    //
+    // Tell JavaScript that this timestamp is UTC.
+    if (
+      !dateString.endsWith("Z") &&
+      !/[+-]\d{2}:\d{2}$/.test(dateString)
+    ) {
+      dateString += "Z";
+    }
+
+    const parsedDate = new Date(dateString);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return "";
+    }
+
+    return parsedDate.toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata",
       day: "2-digit",
       month: "short",
       year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
+      hour12: true,
     });
-  };
+  } catch (error) {
+    console.error("Notification date formatting error:", error);
+    return "";
+  }
+};
 
   return (
     <div className="relative">

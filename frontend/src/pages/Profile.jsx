@@ -1,138 +1,492 @@
-import { useEffect, useState } from "react";
-import { toast } from "react-toastify";
+import {
+  useEffect,
+  useState,
+} from "react";
 
-import { useAuth } from "../context/AuthContext";
+import {
+  toast,
+} from "react-toastify";
+
+import {
+  useNavigate,
+} from "react-router-dom";
+
+import {
+  useAuth,
+} from "../context/AuthContext";
+
 import api from "../api/axios";
 
+
 export default function Profile() {
+
   const {
     user,
     updateUser,
+    deleteAccount,
   } = useAuth();
 
-  const [editingName, setEditingName] = useState(false);
 
-  const [name, setName] = useState(
+  const navigate =
+    useNavigate();
+
+
+  // ==========================================================
+  // EDITING STATE
+  // ==========================================================
+
+  const [
+    editingProfile,
+    setEditingProfile
+  ] = useState(false);
+
+
+  const [
+    saving,
+    setSaving
+  ] = useState(false);
+
+
+  const [
+    deletingAccount,
+    setDeletingAccount
+  ] = useState(false);
+
+
+  // ==========================================================
+  // DELETE MODAL
+  // ==========================================================
+
+  const [
+    showDeleteModal,
+    setShowDeleteModal
+  ] = useState(false);
+
+
+  // ==========================================================
+  // PROFILE FORM
+  // ==========================================================
+
+  const [
+    name,
+    setName
+  ] = useState(
     user?.full_name || ""
   );
 
-  const [saving, setSaving] = useState(false);
+
+  const [
+    phone,
+    setPhone
+  ] = useState(
+    user?.phone || ""
+  );
+
+
+  const [
+    role,
+    setRole
+  ] = useState(
+    user?.role || "student"
+  );
+
 
   // ==========================================================
-  // KEEP NAME IN SYNC WITH USER
+  // KEEP FORM IN SYNC WITH USER
   // ==========================================================
 
   useEffect(() => {
-    setName(user?.full_name || "");
-  }, [user?.full_name]);
+
+    setName(
+      user?.full_name || ""
+    );
+
+    setPhone(
+      user?.phone || ""
+    );
+
+    setRole(
+      user?.role || "student"
+    );
+
+  }, [
+    user?.full_name,
+    user?.phone,
+    user?.role,
+  ]);
+
 
   // ==========================================================
-  // UPDATE NAME
+  // UPDATE PROFILE
   // ==========================================================
 
-  const updateName = async () => {
-    const newName = name.trim();
+  const updateProfile = async () => {
+
+    const newName =
+      name.trim();
+
+
+    const newPhone =
+      phone.trim();
+
+
+    const newRole =
+      role.trim();
+
+
+    // --------------------------------------------------------
+    // NAME VALIDATION
+    // --------------------------------------------------------
 
     if (!newName) {
-      toast.error("Name cannot be empty");
+
+      toast.error(
+        "Name cannot be empty"
+      );
+
       return;
     }
 
-    if (newName.length < 2) {
+
+    if (
+      newName.length < 2
+    ) {
+
       toast.error(
         "Name must contain at least 2 characters"
       );
+
       return;
     }
 
-    try {
-      setSaving(true);
 
-      const response = await api.put(
-        "/auth/me/name",
-        {
-          full_name: newName,
-        }
+    // --------------------------------------------------------
+    // PHONE VALIDATION
+    // --------------------------------------------------------
+
+    if (
+      newPhone &&
+      !/^\d{10}$/.test(
+        newPhone
+      )
+    ) {
+
+      toast.error(
+        "Phone number must contain exactly 10 digits"
       );
 
-      // Update AuthContext
+      return;
+    }
+
+
+    // --------------------------------------------------------
+    // ROLE VALIDATION
+    // --------------------------------------------------------
+
+    if (!newRole) {
+
+      toast.error(
+        "Please select a role"
+      );
+
+      return;
+    }
+
+
+    try {
+
+      setSaving(true);
+
+
+      const response =
+        await api.put(
+          "/auth/me/profile",
+          {
+            full_name:
+              newName,
+
+            phone:
+              newPhone || null,
+
+            role:
+              newRole,
+          }
+        );
+
+
+      // ------------------------------------------------------
+      // UPDATE AUTH CONTEXT
+      // ------------------------------------------------------
+
       if (user) {
+
         updateUser({
+
           ...user,
-          full_name: response.data.full_name,
+
+          full_name:
+            response.data.full_name,
+
+          phone:
+            response.data.phone,
+
+          role:
+            response.data.role,
+
         });
+
       }
 
-      setName(response.data.full_name);
 
-      setEditingName(false);
+      // ------------------------------------------------------
+      // UPDATE FORM
+      // ------------------------------------------------------
+
+      setName(
+        response.data.full_name || ""
+      );
+
+
+      setPhone(
+        response.data.phone || ""
+      );
+
+
+      setRole(
+        response.data.role ||
+        "student"
+      );
+
+
+      setEditingProfile(
+        false
+      );
+
 
       toast.success(
-        "Name updated successfully"
+        "Profile updated successfully"
       );
 
     } catch (error) {
+
       console.error(
-        "Failed to update name:",
+        "Failed to update profile:",
         error
       );
 
+
       toast.error(
         error.response?.data?.detail ||
-          "Failed to update name"
+        "Failed to update profile"
       );
 
     } finally {
+
       setSaving(false);
+
     }
+
   };
+
 
   // ==========================================================
   // CANCEL EDIT
   // ==========================================================
 
-  const cancelNameEdit = () => {
-    setName(user?.full_name || "");
-    setEditingName(false);
+  const cancelEdit = () => {
+
+    setName(
+      user?.full_name || ""
+    );
+
+
+    setPhone(
+      user?.phone || ""
+    );
+
+
+    setRole(
+      user?.role || "student"
+    );
+
+
+    setEditingProfile(
+      false
+    );
+
   };
+
+
+  // ==========================================================
+  // OPEN DELETE MODAL
+  // ==========================================================
+
+  const openDeleteModal = () => {
+
+    if (
+      deletingAccount ||
+      saving
+    ) {
+
+      return;
+    }
+
+
+    setShowDeleteModal(
+      true
+    );
+
+  };
+
+
+  // ==========================================================
+  // CLOSE DELETE MODAL
+  // ==========================================================
+
+  const closeDeleteModal = () => {
+
+    if (
+      deletingAccount
+    ) {
+
+      return;
+    }
+
+
+    setShowDeleteModal(
+      false
+    );
+
+  };
+
+
+  // ==========================================================
+  // DELETE ACCOUNT
+  // ==========================================================
+
+  const handleDeleteAccount = async () => {
+
+    try {
+
+      setDeletingAccount(
+        true
+      );
+
+
+      // ------------------------------------------------------
+      // DELETE EVERYTHING FROM BACKEND
+      // ------------------------------------------------------
+
+      await deleteAccount();
+
+
+      // ------------------------------------------------------
+      // CLOSE MODAL
+      // ------------------------------------------------------
+
+      setShowDeleteModal(
+        false
+      );
+
+
+      // ------------------------------------------------------
+      // SUCCESS MESSAGE
+      // ------------------------------------------------------
+
+      toast.success(
+        "Your account and all associated data have been deleted."
+      );
+
+
+      // ------------------------------------------------------
+      // REDIRECT
+      // ------------------------------------------------------
+
+      navigate(
+        "/login",
+        {
+          replace: true,
+        }
+      );
+
+    } catch (error) {
+
+      console.error(
+        "Failed to delete account:",
+        error
+      );
+
+
+      toast.error(
+        error.response?.data?.detail ||
+        "Failed to delete account"
+      );
+
+    } finally {
+
+      setDeletingAccount(
+        false
+      );
+
+    }
+
+  };
+
 
   // ==========================================================
   // FORMAT CREATED DATE
   // ==========================================================
 
-  const formatCreatedDate = (date) => {
+  const formatCreatedDate = (
+    date
+  ) => {
+
     if (!date) {
+
       return "Not available";
+
     }
 
-    const parsedDate = new Date(date);
 
-    if (Number.isNaN(parsedDate.getTime())) {
+    const parsedDate =
+      new Date(date);
+
+
+    if (
+      Number.isNaN(
+        parsedDate.getTime()
+      )
+    ) {
+
       return "Not available";
+
     }
+
 
     return parsedDate.toLocaleDateString(
       "en-IN",
       {
         day: "2-digit",
-        month: "long",
+        month: "short",
         year: "numeric",
       }
     );
+
   };
 
+
   // ==========================================================
-  // PROFILE CONTENT ONLY
-  //
-  // Sidebar and top header are provided by Layout.jsx
+  // PROFILE CONTENT
   // ==========================================================
 
   return (
+
     <div className="w-full">
 
-      {/* =====================================================
+
+      {/* ====================================================
           PAGE TITLE
-      ===================================================== */}
+      ==================================================== */}
 
       <div className="max-w-5xl mx-auto mb-8">
 
@@ -146,23 +500,23 @@ export default function Profile() {
 
       </div>
 
-      {/* =====================================================
+
+      {/* ====================================================
           PROFILE CARD
-      ===================================================== */}
+      ==================================================== */}
 
       <div className="max-w-5xl mx-auto">
 
         <div className="bg-white rounded-xl shadow">
 
-          {/* =================================================
+
+          {/* ==================================================
               PROFILE HEADER
-          ================================================= */}
+          ================================================== */}
 
           <div className="p-6 border-b">
 
             <div className="flex items-center gap-5">
-
-              {/* PROFILE INITIAL */}
 
               <div
                 className="
@@ -179,6 +533,7 @@ export default function Profile() {
                   flex-shrink-0
                 "
               >
+
                 {(
                   user?.full_name ||
                   user?.email ||
@@ -186,18 +541,20 @@ export default function Profile() {
                 )
                   .charAt(0)
                   .toUpperCase()}
+
               </div>
 
-              {/* USER INFORMATION */}
 
               <div>
 
                 <h2 className="text-2xl font-bold text-gray-800">
-                  {user?.full_name || "User"}
+                  {user?.full_name ||
+                    "User"}
                 </h2>
 
                 <p className="text-gray-500">
-                  {user?.email || "Not provided"}
+                  {user?.email ||
+                    "Not provided"}
                 </p>
 
               </div>
@@ -206,50 +563,86 @@ export default function Profile() {
 
           </div>
 
-          {/* =================================================
+
+          {/* ==================================================
               ACCOUNT DETAILS
-          ================================================= */}
+          ================================================== */}
 
           <div className="p-6">
 
-            <h3 className="text-xl font-semibold text-gray-800 mb-6">
-              Account Details
-            </h3>
+            <div className="flex justify-between items-center mb-6">
+
+              <h3 className="text-xl font-semibold text-gray-800">
+                Account Details
+              </h3>
+
+
+              {!editingProfile && (
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setEditingProfile(
+                      true
+                    )
+                  }
+                  disabled={
+                    deletingAccount
+                  }
+                  className="
+                    text-blue-600
+                    hover:text-blue-800
+                    font-medium
+                    disabled:text-gray-400
+                  "
+                >
+                  Edit
+                </button>
+
+              )}
+
+            </div>
+
 
             <div className="space-y-6">
 
-              {/* =================================================
-                  FULL NAME
-              ================================================= */}
+
+              {/* FULL NAME */}
 
               <div>
 
-                <div className="flex justify-between items-center mb-2">
+                <label className="block font-medium text-gray-700 mb-2">
+                  Full Name
+                </label>
 
-                  <label className="font-medium text-gray-700">
-                    Full Name
-                  </label>
 
-                  {!editingName && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setEditingName(true)
-                      }
-                      className="
-                        text-blue-600
-                        hover:text-blue-800
-                        text-sm
-                        font-medium
-                      "
-                    >
-                      Edit
-                    </button>
-                  )}
+                {editingProfile ? (
 
-                </div>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) =>
+                      setName(
+                        e.target.value
+                      )
+                    }
+                    disabled={saving}
+                    className="
+                      w-full
+                      border
+                      border-gray-300
+                      rounded-lg
+                      px-4
+                      py-3
+                      focus:outline-none
+                      focus:ring-2
+                      focus:ring-blue-500
+                      disabled:bg-gray-100
+                    "
+                    placeholder="Enter your full name"
+                  />
 
-                {!editingName ? (
+                ) : (
 
                   <div
                     className="
@@ -267,89 +660,12 @@ export default function Profile() {
                       "Not provided"}
                   </div>
 
-                ) : (
-
-                  <div>
-
-                    <input
-                      type="text"
-                      value={name}
-                      onChange={(e) =>
-                        setName(
-                          e.target.value
-                        )
-                      }
-                      disabled={saving}
-                      className="
-                        w-full
-                        border
-                        border-gray-300
-                        rounded-lg
-                        px-4
-                        py-3
-                        focus:outline-none
-                        focus:ring-2
-                        focus:ring-blue-500
-                        disabled:bg-gray-100
-                      "
-                      placeholder="Enter your full name"
-                    />
-
-                    <div className="flex gap-3 mt-3">
-
-                      {/* SAVE */}
-
-                      <button
-                        type="button"
-                        onClick={updateName}
-                        disabled={saving}
-                        className="
-                          bg-blue-600
-                          hover:bg-blue-700
-                          disabled:bg-blue-300
-                          text-white
-                          px-5
-                          py-2
-                          rounded-lg
-                          transition
-                        "
-                      >
-                        {saving
-                          ? "Saving..."
-                          : "Save"}
-                      </button>
-
-                      {/* CANCEL */}
-
-                      <button
-                        type="button"
-                        onClick={cancelNameEdit}
-                        disabled={saving}
-                        className="
-                          bg-gray-200
-                          hover:bg-gray-300
-                          disabled:bg-gray-100
-                          text-gray-700
-                          px-5
-                          py-2
-                          rounded-lg
-                          transition
-                        "
-                      >
-                        Cancel
-                      </button>
-
-                    </div>
-
-                  </div>
-
                 )}
 
               </div>
 
-              {/* =================================================
-                  EMAIL
-              ================================================= */}
+
+              {/* EMAIL */}
 
               <div>
 
@@ -379,9 +695,8 @@ export default function Profile() {
 
               </div>
 
-              {/* =================================================
-                  PHONE
-              ================================================= */}
+
+              {/* PHONE */}
 
               <div>
 
@@ -389,31 +704,71 @@ export default function Profile() {
                   Phone Number
                 </label>
 
-                <div
-                  className="
-                    w-full
-                    bg-gray-100
-                    border
-                    border-gray-200
-                    rounded-lg
-                    px-4
-                    py-3
-                    text-gray-600
-                  "
-                >
-                  {user?.phone ||
-                    "Not provided"}
-                </div>
 
-                <p className="text-xs text-gray-500 mt-2">
-                  Phone number cannot be changed.
-                </p>
+                {editingProfile ? (
+
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => {
+
+                      const value =
+                        e.target.value
+                          .replace(
+                            /\D/g,
+                            ""
+                          )
+                          .slice(
+                            0,
+                            10
+                          );
+
+                      setPhone(
+                        value
+                      );
+
+                    }}
+                    disabled={saving}
+                    className="
+                      w-full
+                      border
+                      border-gray-300
+                      rounded-lg
+                      px-4
+                      py-3
+                      focus:outline-none
+                      focus:ring-2
+                      focus:ring-blue-500
+                      disabled:bg-gray-100
+                    "
+                    placeholder="Enter 10 digit phone number"
+                    maxLength={10}
+                  />
+
+                ) : (
+
+                  <div
+                    className="
+                      w-full
+                      bg-gray-50
+                      border
+                      border-gray-200
+                      rounded-lg
+                      px-4
+                      py-3
+                      text-gray-800
+                    "
+                  >
+                    {user?.phone ||
+                      "Not provided"}
+                  </div>
+
+                )}
 
               </div>
 
-              {/* =================================================
-                  ROLE
-              ================================================= */}
+
+              {/* ACCOUNT ROLE */}
 
               <div>
 
@@ -421,27 +776,75 @@ export default function Profile() {
                   Account Role
                 </label>
 
-                <div
-                  className="
-                    w-full
-                    bg-gray-100
-                    border
-                    border-gray-200
-                    rounded-lg
-                    px-4
-                    py-3
-                    text-gray-600
-                  "
-                >
-                  {user?.role ||
-                    "student"}
-                </div>
+
+                {editingProfile ? (
+
+                  <select
+                    value={role}
+                    onChange={(e) =>
+                      setRole(
+                        e.target.value
+                      )
+                    }
+                    disabled={saving}
+                    className="
+                      w-full
+                      border
+                      border-gray-300
+                      rounded-lg
+                      px-4
+                      py-3
+                      bg-white
+                      focus:outline-none
+                      focus:ring-2
+                      focus:ring-blue-500
+                      disabled:bg-gray-100
+                    "
+                  >
+
+                    <option value="student">
+                      Student
+                    </option>
+
+                    <option value="employee">
+                      Employee
+                    </option>
+
+                    <option value="professional">
+                      Professional
+                    </option>
+
+                    <option value="other">
+                      Other
+                    </option>
+
+                  </select>
+
+                ) : (
+
+                  <div
+                    className="
+                      w-full
+                      bg-gray-50
+                      border
+                      border-gray-200
+                      rounded-lg
+                      px-4
+                      py-3
+                      text-gray-800
+                      capitalize
+                    "
+                  >
+                    {user?.role ||
+                      "student"}
+                  </div>
+
+                )}
 
               </div>
 
-              {/* =================================================
-                  ACCOUNT STATUS
-              ================================================= */}
+
+              {/* ACCOUNT STATUS */}
 
               <div>
 
@@ -466,11 +869,14 @@ export default function Profile() {
                     : "Inactive"}
                 </div>
 
+                <p className="text-xs text-gray-500 mt-2">
+                  Account status is managed by the system.
+                </p>
+
               </div>
 
-              {/* =================================================
-                  CREATED DATE
-              ================================================= */}
+
+              {/* ACCOUNT CREATED */}
 
               <div>
 
@@ -497,7 +903,131 @@ export default function Profile() {
 
               </div>
 
+
+              {/* SAVE / CANCEL */}
+
+              {editingProfile && (
+
+                <div className="flex gap-3 pt-2">
+
+                  <button
+                    type="button"
+                    onClick={
+                      updateProfile
+                    }
+                    disabled={
+                      saving ||
+                      deletingAccount
+                    }
+                    className="
+                      bg-blue-600
+                      hover:bg-blue-700
+                      disabled:bg-blue-300
+                      text-white
+                      px-6
+                      py-2.5
+                      rounded-lg
+                      transition
+                    "
+                  >
+
+                    {saving
+                      ? "Saving..."
+                      : "Save Changes"}
+
+                  </button>
+
+
+                  <button
+                    type="button"
+                    onClick={
+                      cancelEdit
+                    }
+                    disabled={
+                      saving ||
+                      deletingAccount
+                    }
+                    className="
+                      bg-gray-200
+                      hover:bg-gray-300
+                      disabled:bg-gray-100
+                      text-gray-700
+                      px-6
+                      py-2.5
+                      rounded-lg
+                      transition
+                    "
+                  >
+                    Cancel
+                  </button>
+
+                </div>
+
+              )}
+
             </div>
+
+          </div>
+
+
+          {/* ==================================================
+              DANGER ZONE
+          ================================================== */}
+
+          <div
+            className="
+              p-6
+              border-t
+              border-red-200
+              bg-red-50
+              rounded-b-xl
+            "
+          >
+
+            <h3 className="text-xl font-semibold text-red-700">
+              Delete Account
+            </h3>
+
+
+            <p className="text-sm text-red-600 mt-2">
+              Permanently delete your BudgetBuddy account
+              and all associated data.
+            </p>
+
+
+            <p className="text-sm text-gray-600 mt-3">
+              This includes your profile, income, expenses,
+              budgets, bank accounts, savings goals and
+              notifications. This action cannot be undone.
+            </p>
+
+
+            <button
+              type="button"
+              onClick={
+                openDeleteModal
+              }
+              disabled={
+                deletingAccount ||
+                saving
+              }
+              className="
+                mt-5
+                bg-red-600
+                hover:bg-red-700
+                disabled:bg-red-300
+                text-white
+                px-6
+                py-2.5
+                rounded-lg
+                font-medium
+                transition
+              "
+            >
+
+              Delete Account
+
+            </button>
 
           </div>
 
@@ -505,6 +1035,200 @@ export default function Profile() {
 
       </div>
 
+
+      {/* ======================================================
+          CUSTOM DELETE CONFIRMATION MODAL
+      ====================================================== */}
+
+      {showDeleteModal && (
+
+        <div
+          className="
+            fixed
+            inset-0
+            z-50
+            flex
+            items-center
+            justify-center
+            bg-black
+            bg-opacity-50
+            px-4
+          "
+        >
+
+          <div
+            className="
+              w-full
+              max-w-lg
+              bg-white
+              rounded-xl
+              shadow-2xl
+              p-6
+            "
+          >
+
+            {/* ------------------------------------------------
+                MODAL HEADER
+            ------------------------------------------------ */}
+
+            <div className="flex items-start gap-4">
+
+              <div
+                className="
+                  flex-shrink-0
+                  w-12
+                  h-12
+                  rounded-full
+                  bg-red-100
+                  text-red-600
+                  flex
+                  items-center
+                  justify-center
+                  text-2xl
+                "
+              >
+                !
+              </div>
+
+
+              <div>
+
+                <h2 className="text-xl font-bold text-gray-800">
+                  Delete your account?
+                </h2>
+
+                <p className="text-gray-600 mt-1">
+                  This action is permanent and cannot be undone.
+                </p>
+
+              </div>
+
+            </div>
+
+
+            {/* ------------------------------------------------
+                DATA WARNING
+            ------------------------------------------------ */}
+
+            <div
+              className="
+                mt-5
+                bg-red-50
+                border
+                border-red-200
+                rounded-lg
+                p-4
+              "
+            >
+
+              <p className="font-medium text-red-700 mb-2">
+                The following will be permanently deleted:
+              </p>
+
+
+              <ul
+                className="
+                  list-disc
+                  list-inside
+                  text-sm
+                  text-gray-700
+                  space-y-1
+                "
+              >
+
+                <li>Profile information</li>
+
+                <li>All income records</li>
+
+                <li>All expense records</li>
+
+                <li>All budgets</li>
+
+                <li>All savings goals</li>
+
+                <li>All bank accounts</li>
+
+                <li>All notifications</li>
+
+                <li>Your BudgetBuddy account</li>
+
+              </ul>
+
+            </div>
+
+
+            {/* ------------------------------------------------
+                MODAL BUTTONS
+            ------------------------------------------------ */}
+
+            <div
+              className="
+                flex
+                justify-end
+                gap-3
+                mt-6
+              "
+            >
+
+              <button
+                type="button"
+                onClick={
+                  closeDeleteModal
+                }
+                disabled={
+                  deletingAccount
+                }
+                className="
+                  px-5
+                  py-2.5
+                  rounded-lg
+                  bg-gray-200
+                  hover:bg-gray-300
+                  disabled:bg-gray-100
+                  text-gray-700
+                  font-medium
+                "
+              >
+                Cancel
+              </button>
+
+
+              <button
+                type="button"
+                onClick={
+                  handleDeleteAccount
+                }
+                disabled={
+                  deletingAccount
+                }
+                className="
+                  px-5
+                  py-2.5
+                  rounded-lg
+                  bg-red-600
+                  hover:bg-red-700
+                  disabled:bg-red-300
+                  text-white
+                  font-medium
+                "
+              >
+
+                {deletingAccount
+                  ? "Deleting..."
+                  : "Delete Permanently"}
+
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      )}
+
     </div>
+
   );
+
 }

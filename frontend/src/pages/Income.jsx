@@ -27,14 +27,21 @@ export default function Income() {
   const [loading, setLoading] = useState(false);
   const [loadingAccounts, setLoadingAccounts] = useState(true);
 
-  // Show / hide income form
   const [showForm, setShowForm] = useState(false);
+
+  // ==========================================
+  // DELETE CONFIRMATION
+  // ==========================================
+
+  const [incomeToDelete, setIncomeToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   // ==========================================
   // GET ALL INCOMES
   // ==========================================
 
   const fetchIncomes = async () => {
+
     try {
 
       const response = await api.get("/incomes/");
@@ -64,6 +71,7 @@ export default function Income() {
   // ==========================================
 
   const fetchBankAccounts = async () => {
+
     try {
 
       setLoadingAccounts(true);
@@ -204,24 +212,18 @@ export default function Income() {
       }
 
       // ======================================
-      // RESET FORM
+      // RESET
       // ======================================
 
       resetForm();
 
-      // Hide form after successful operation
       setShowForm(false);
 
       // ======================================
-      // REFRESH INCOME LIST
+      // REFRESH DATA
       // ======================================
 
       await fetchIncomes();
-
-      // ======================================
-      // REFRESH BANK ACCOUNT BALANCES
-      // ======================================
-
       await fetchBankAccounts();
 
     } catch (error) {
@@ -271,6 +273,15 @@ export default function Income() {
 
   const handleEdit = (income) => {
 
+    if (!income?.id) {
+
+      toast.error(
+        "Unable to edit income: missing income ID."
+      );
+
+      return;
+    }
+
     setEditingIncome(income);
 
     setForm({
@@ -286,7 +297,6 @@ export default function Income() {
           : "",
     });
 
-    // Open form when editing
     setShowForm(true);
 
     window.scrollTo({
@@ -296,28 +306,52 @@ export default function Income() {
   };
 
   // ==========================================
-  // DELETE
+  // OPEN DELETE MODAL
   // ==========================================
 
-  const handleDelete = async (id) => {
+  const handleDelete = (income) => {
 
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this income?"
-    );
+    if (!income?.id) {
 
-    if (!confirmed) {
+      toast.error(
+        "Unable to delete income: missing income ID."
+      );
+
       return;
     }
+
+    setIncomeToDelete(income);
+  };
+
+  // ==========================================
+  // CONFIRM DELETE
+  // ==========================================
+
+  const confirmDelete = async () => {
+
+    if (!incomeToDelete?.id) {
+
+      toast.error(
+        "Unable to delete income: missing income ID."
+      );
+
+      return;
+    }
+
+    setDeleting(true);
 
     try {
 
       await api.delete(
-        `/incomes/${id}`
+        `/incomes/${incomeToDelete.id}`
       );
 
       toast.success(
         "Income deleted successfully"
       );
+
+      // Close modal
+      setIncomeToDelete(null);
 
       // Refresh income list
       await fetchIncomes();
@@ -336,7 +370,24 @@ export default function Income() {
         error.response?.data?.detail ||
           "Failed to delete income"
       );
+
+    } finally {
+
+      setDeleting(false);
     }
+  };
+
+  // ==========================================
+  // CANCEL DELETE
+  // ==========================================
+
+  const cancelDelete = () => {
+
+    if (deleting) {
+      return;
+    }
+
+    setIncomeToDelete(null);
   };
 
   // ==========================================
@@ -416,9 +467,8 @@ export default function Income() {
 
           </div>
 
-          {/* ADD INCOME BUTTON */}
-
           {!showForm && (
+
             <button
               onClick={handleAddIncome}
               className="
@@ -434,6 +484,7 @@ export default function Income() {
             >
               + Add Income
             </button>
+
           )}
 
         </div>
@@ -467,6 +518,186 @@ export default function Income() {
         />
 
       </main>
+
+
+      {/* ==========================================
+          DELETE CONFIRMATION MODAL
+      ========================================== */}
+
+      {incomeToDelete && (
+
+        <div
+          className="
+            fixed
+            inset-0
+            z-50
+            flex
+            items-center
+            justify-center
+            bg-black/50
+            px-4
+          "
+          onClick={cancelDelete}
+        >
+
+          <div
+            className="
+              bg-white
+              rounded-2xl
+              shadow-2xl
+              w-full
+              max-w-md
+              p-6
+            "
+            onClick={(e) =>
+              e.stopPropagation()
+            }
+          >
+
+            {/* ICON */}
+
+            <div
+              className="
+                w-12
+                h-12
+                rounded-full
+                bg-red-100
+                flex
+                items-center
+                justify-center
+                text-2xl
+                mb-4
+              "
+            >
+              ⚠️
+            </div>
+
+
+            {/* TITLE */}
+
+            <h2
+              className="
+                text-xl
+                font-bold
+                text-gray-900
+              "
+            >
+              Delete Income?
+            </h2>
+
+
+            {/* MESSAGE */}
+
+            <p
+              className="
+                text-gray-600
+                mt-2
+                leading-relaxed
+              "
+            >
+
+              Are you sure you want to delete the{" "}
+
+              <span className="font-semibold text-gray-900">
+                {incomeToDelete.source}
+              </span>
+
+              {" "}income?
+
+            </p>
+
+
+            {/* AMOUNT */}
+
+            <p
+              className="
+                text-lg
+                font-semibold
+                text-green-600
+                mt-3
+              "
+            >
+              ₹
+              {Number(
+                incomeToDelete.amount || 0
+              ).toFixed(2)}
+            </p>
+
+
+            {/* WARNING */}
+
+            <p
+              className="
+                text-sm
+                text-gray-500
+                mt-2
+              "
+            >
+              The income will be removed and the amount
+              will be deducted from the associated bank account.
+            </p>
+
+
+            {/* BUTTONS */}
+
+            <div
+              className="
+                flex
+                justify-end
+                gap-3
+                mt-6
+              "
+            >
+
+              <button
+                type="button"
+                onClick={cancelDelete}
+                disabled={deleting}
+                className="
+                  px-5
+                  py-2.5
+                  rounded-lg
+                  border
+                  border-gray-300
+                  text-gray-700
+                  hover:bg-gray-100
+                  disabled:opacity-50
+                  disabled:cursor-not-allowed
+                "
+              >
+                Cancel
+              </button>
+
+
+              <button
+                type="button"
+                onClick={confirmDelete}
+                disabled={deleting}
+                className="
+                  px-5
+                  py-2.5
+                  rounded-lg
+                  bg-red-600
+                  hover:bg-red-700
+                  text-white
+                  disabled:bg-red-400
+                  disabled:cursor-not-allowed
+                "
+              >
+
+                {deleting
+                  ? "Deleting..."
+                  : "Delete Income"}
+
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      )}
 
     </div>
   );

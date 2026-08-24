@@ -18,11 +18,18 @@ def create_notification(
     message: str,
     notification_type: str
 ):
+    """
+    Create a notification.
+
+    created_at is stored as UTC.
+    """
+
     notification = Notification(
         user_id=user_id,
         message=message,
         type=notification_type,
-        is_read=False
+        is_read=False,
+        created_at=datetime.utcnow()
     )
 
     db.add(notification)
@@ -109,10 +116,16 @@ def create_monthly_report_notification(
     db: Session,
     user_id: int
 ):
-    # Current date/time
+    # ------------------------------------------------------
+    # CURRENT UTC TIME
+    # ------------------------------------------------------
+
     now = datetime.utcnow()
 
-    # First day of the current month
+    # ------------------------------------------------------
+    # FIRST DAY OF CURRENT MONTH
+    # ------------------------------------------------------
+
     month_start = now.replace(
         day=1,
         hour=0,
@@ -122,7 +135,7 @@ def create_monthly_report_notification(
     )
 
     # ------------------------------------------------------
-    # TOTAL INCOME THIS MONTH
+    # TOTAL INCOME
     # ------------------------------------------------------
 
     total_income = (
@@ -140,7 +153,7 @@ def create_monthly_report_notification(
     )
 
     # ------------------------------------------------------
-    # TOTAL EXPENSE THIS MONTH
+    # TOTAL EXPENSE
     # ------------------------------------------------------
 
     total_expense = (
@@ -157,25 +170,32 @@ def create_monthly_report_notification(
         .scalar()
     )
 
-    # Convert None to 0
-    total_income = float(total_income or 0)
-    total_expense = float(total_expense or 0)
+    total_income = float(
+        total_income or 0
+    )
+
+    total_expense = float(
+        total_expense or 0
+    )
 
     # ------------------------------------------------------
-    # CALCULATE BALANCE
+    # BALANCE
     # ------------------------------------------------------
 
-    balance = total_income - total_expense
+    balance = (
+        total_income -
+        total_expense
+    )
 
     # ------------------------------------------------------
-    # CREATE REPORT MESSAGE
+    # MESSAGE
     # ------------------------------------------------------
 
     message = (
         f"Monthly Report: "
-        f"Income ₹{total_income:.2f}, "
-        f"Expenses ₹{total_expense:.2f}, "
-        f"Balance ₹{balance:.2f}"
+        f"Income \u20b9{total_income:.2f}, "
+        f"Expenses \u20b9{total_expense:.2f}, "
+        f"Balance \u20b9{balance:.2f}"
     )
 
     # ------------------------------------------------------
@@ -186,7 +206,8 @@ def create_monthly_report_notification(
         user_id=user_id,
         message=message,
         type="monthly_report",
-        is_read=False
+        is_read=False,
+        created_at=datetime.utcnow()
     )
 
     db.add(notification)

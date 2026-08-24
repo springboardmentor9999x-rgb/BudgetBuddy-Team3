@@ -5,11 +5,19 @@ from sqlalchemy.orm import Session
 from app.core.deps import get_current_user
 from app.database import get_db
 from app.models.user import User
+from app.models.profile import Profile
+from app.models.income import Income
+from app.models.expense import Expense
+from app.models.budget import Budget
+from app.models.bank_account import BankAccount
+from app.models.savings_goal import SavingsGoal
+from app.models.notification import Notification
 
 from app.schemas.user import (
     UserCreate,
     UserOut,
     UserNameUpdate,
+    UserProfileUpdate,
     Token,
     ForgotPasswordRequest,
     ResetPasswordRequest,
@@ -72,7 +80,6 @@ def signup(
                 user=existing_user
             )
 
-            # FRONTEND VERIFICATION PAGE
             verification_link = (
                 "http://localhost:5173/verify-email"
                 f"?token={verification_token}"
@@ -202,7 +209,6 @@ BudgetBuddy Team
 
     except Exception as e:
 
-        # Remove newly-created user if email failed
         db.delete(user)
         db.commit()
 
@@ -226,18 +232,10 @@ def resend_verification(
     db: Session = Depends(get_db)
 ):
 
-    # ------------------------------------------------------
-    # FIND USER
-    # ------------------------------------------------------
-
     user = get_user_by_email(
         db,
         request.email
     )
-
-    # ------------------------------------------------------
-    # DON'T REVEAL ACCOUNT INFORMATION
-    # ------------------------------------------------------
 
     if not user:
 
@@ -248,37 +246,21 @@ def resend_verification(
             )
         }
 
-    # ------------------------------------------------------
-    # ALREADY VERIFIED
-    # ------------------------------------------------------
-
     if user.is_verified:
 
         return {
             "message": "Email is already verified. You can login."
         }
 
-    # ------------------------------------------------------
-    # CREATE NEW VERIFICATION TOKEN
-    # ------------------------------------------------------
-
     verification_token = create_verification_token(
         db=db,
         user=user
     )
 
-    # ------------------------------------------------------
-    # CREATE FRONTEND VERIFICATION LINK
-    # ------------------------------------------------------
-
     verification_link = (
         "http://localhost:5173/verify-email"
         f"?token={verification_token}"
     )
-
-    # ------------------------------------------------------
-    # CREATE EMAIL
-    # ------------------------------------------------------
 
     email_subject = "Verify your BudgetBuddy account"
 
@@ -303,10 +285,6 @@ Regards,
 BudgetBuddy Team
 """
 
-    # ------------------------------------------------------
-    # SEND EMAIL
-    # ------------------------------------------------------
-
     try:
 
         send_email(
@@ -317,7 +295,6 @@ BudgetBuddy Team
 
     except Exception as e:
 
-        # Remove the newly-created token if email failed
         user.verification_token = None
         user.verification_token_expires = None
 
@@ -349,18 +326,10 @@ def login(
     db: Session = Depends(get_db)
 ):
 
-    # ------------------------------------------------------
-    # FIND USER
-    # ------------------------------------------------------
-
     user = get_user_by_email(
         db,
         form_data.username
     )
-
-    # ------------------------------------------------------
-    # CHECK CREDENTIALS
-    # ------------------------------------------------------
 
     if not user or not verify_password(
         form_data.password,
@@ -375,10 +344,6 @@ def login(
             }
         )
 
-    # ------------------------------------------------------
-    # CHECK ACCOUNT STATUS
-    # ------------------------------------------------------
-
     if not user.is_active:
 
         raise HTTPException(
@@ -386,20 +351,12 @@ def login(
             detail="Account is inactive"
         )
 
-    # ------------------------------------------------------
-    # CHECK EMAIL VERIFICATION
-    # ------------------------------------------------------
-
     if not user.is_verified:
 
         raise HTTPException(
             status_code=403,
             detail="Please verify your email before logging in"
         )
-
-    # ------------------------------------------------------
-    # CREATE ACCESS TOKEN
-    # ------------------------------------------------------
 
     token = create_access_token(
         data={
@@ -468,6 +425,98 @@ def update_my_name(
 
 
 # ==========================================================
+# UPDATE PROFILE
+# ==========================================================
+
+@router.put(
+    "/me/profile",
+    response_model=UserOut
+)
+def update_my_profile(
+    profile_data: UserProfileUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+
+    # ------------------------------------------------------
+    # VALIDATE FULL NAME
+    # ------------------------------------------------------
+
+    new_name = profile_data.full_name.strip()
+
+    if not new_name:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Name cannot be empty"
+        )
+
+    if len(new_name) < 2:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Name must contain at least 2 characters"
+        )
+
+    # ------------------------------------------------------
+    # VALIDATE PHONE
+    # ------------------------------------------------------
+
+    new_phone = profile_data.phone
+
+    if new_phone is not None:
+
+        new_phone = new_phone.strip()
+
+        if new_phone == "":
+            new_phone = None
+
+        elif not new_phone.isdigit():
+
+            raise HTTPException(
+                status_code=400,
+                detail="Phone number must contain only digits"
+            )
+
+        elif len(new_phone) != 10:
+
+            raise HTTPException(
+                status_code=400,
+                detail="Phone number must contain exactly 10 digits"
+            )
+
+    # ------------------------------------------------------
+    # VALIDATE ROLE
+    # ------------------------------------------------------
+
+    new_role = profile_data.role.strip().lower()
+
+    if not new_role:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Role cannot be empty"
+        )
+
+    # ------------------------------------------------------
+    # UPDATE USER
+    # ------------------------------------------------------
+
+    current_user.full_name = new_name
+    current_user.phone = new_phone
+    current_user.role = new_role
+
+    # ------------------------------------------------------
+    # SAVE
+    # ------------------------------------------------------
+
+    db.commit()
+    db.refresh(current_user)
+
+    return current_user
+
+
+# ==========================================================
 # VERIFY EMAIL
 # ==========================================================
 
@@ -508,18 +557,10 @@ def forgot_password(
     db: Session = Depends(get_db)
 ):
 
-    # ------------------------------------------------------
-    # FIND USER
-    # ------------------------------------------------------
-
     user = get_user_by_email(
         db,
         request.email
     )
-
-    # ------------------------------------------------------
-    # DON'T REVEAL WHETHER EMAIL EXISTS
-    # ------------------------------------------------------
 
     if not user:
 
@@ -530,27 +571,15 @@ def forgot_password(
             )
         }
 
-    # ------------------------------------------------------
-    # CREATE RESET TOKEN
-    # ------------------------------------------------------
-
     reset_token = create_reset_token(
         db=db,
         user=user
     )
 
-    # ------------------------------------------------------
-    # CREATE FRONTEND RESET LINK
-    # ------------------------------------------------------
-
     reset_link = (
         "http://localhost:5173/reset-password"
         f"?token={reset_token}"
     )
-
-    # ------------------------------------------------------
-    # CREATE EMAIL
-    # ------------------------------------------------------
 
     email_subject = "BudgetBuddy Password Reset"
 
@@ -575,10 +604,6 @@ Regards,
 BudgetBuddy Team
 """
 
-    # ------------------------------------------------------
-    # SEND EMAIL
-    # ------------------------------------------------------
-
     try:
 
         send_email(
@@ -598,10 +623,6 @@ BudgetBuddy Team
             status_code=500,
             detail=f"Unable to send password reset email: {str(e)}"
         )
-
-    # ------------------------------------------------------
-    # DON'T RETURN TOKEN
-    # ------------------------------------------------------
 
     return {
         "message": (
@@ -623,10 +644,6 @@ def reset_user_password(
     db: Session = Depends(get_db)
 ):
 
-    # ------------------------------------------------------
-    # FIND USER USING RESET TOKEN
-    # ------------------------------------------------------
-
     user = get_user_by_reset_token(
         db=db,
         token=request.token
@@ -639,10 +656,6 @@ def reset_user_password(
             detail="Invalid or expired reset token"
         )
 
-    # ------------------------------------------------------
-    # RESET PASSWORD
-    # ------------------------------------------------------
-
     reset_password(
         db=db,
         user=user,
@@ -652,3 +665,151 @@ def reset_user_password(
     return {
         "message": "Password reset successfully"
     }
+
+
+# ==========================================================
+# DELETE CURRENT USER ACCOUNT
+# ==========================================================
+#
+# IMPORTANT:
+#
+# This deletes ALL information belonging to the current user.
+#
+# Deletion order:
+#
+# 1. Profile
+# 2. Income
+# 3. Expense
+# 4. Budget
+# 5. Savings Goals
+# 6. Notifications
+# 7. Bank Accounts
+# 8. User
+#
+# Savings goals must be deleted BEFORE bank accounts because
+# savings_goals.bank_account_id references bank_accounts.id.
+#
+# ==========================================================
+
+@router.delete(
+    "/me"
+)
+def delete_my_account(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+
+    user_id = current_user.id
+
+    try:
+
+        # --------------------------------------------------
+        # DELETE PROFILE
+        # --------------------------------------------------
+
+        db.query(Profile).filter(
+            Profile.user_id == user_id
+        ).delete(
+            synchronize_session=False
+        )
+
+        # --------------------------------------------------
+        # DELETE INCOME
+        # --------------------------------------------------
+
+        db.query(Income).filter(
+            Income.user_id == user_id
+        ).delete(
+            synchronize_session=False
+        )
+
+        # --------------------------------------------------
+        # DELETE EXPENSES
+        # --------------------------------------------------
+
+        db.query(Expense).filter(
+            Expense.user_id == user_id
+        ).delete(
+            synchronize_session=False
+        )
+
+        # --------------------------------------------------
+        # DELETE BUDGETS
+        # --------------------------------------------------
+
+        db.query(Budget).filter(
+            Budget.user_id == user_id
+        ).delete(
+            synchronize_session=False
+        )
+
+        # --------------------------------------------------
+        # DELETE SAVINGS GOALS
+        # --------------------------------------------------
+
+        # MUST happen before bank accounts because
+        # savings_goals.bank_account_id references bank_accounts.id.
+
+        db.query(SavingsGoal).filter(
+            SavingsGoal.user_id == user_id
+        ).delete(
+            synchronize_session=False
+        )
+
+        # --------------------------------------------------
+        # DELETE NOTIFICATIONS
+        # --------------------------------------------------
+
+        db.query(Notification).filter(
+            Notification.user_id == user_id
+        ).delete(
+            synchronize_session=False
+        )
+
+        # --------------------------------------------------
+        # DELETE BANK ACCOUNTS
+        # --------------------------------------------------
+
+        db.query(BankAccount).filter(
+            BankAccount.user_id == user_id
+        ).delete(
+            synchronize_session=False
+        )
+
+        # --------------------------------------------------
+        # DELETE USER
+        # --------------------------------------------------
+
+        db.query(User).filter(
+            User.id == user_id
+        ).delete(
+            synchronize_session=False
+        )
+
+        # --------------------------------------------------
+        # COMMIT EVERYTHING
+        # --------------------------------------------------
+
+        db.commit()
+
+        return {
+            "message": "Account and all associated data deleted successfully."
+        }
+
+    except Exception as e:
+
+        # --------------------------------------------------
+        # ROLLBACK IF ANYTHING FAILS
+        # --------------------------------------------------
+
+        db.rollback()
+
+        print(
+            "Account deletion failed:",
+            str(e)
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to delete account and associated data."
+        )

@@ -10,6 +10,7 @@ import api from "../api/axios";
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
+
   // ==========================================================
   // AUTH STATE
   // ==========================================================
@@ -22,60 +23,82 @@ export function AuthProvider({ children }) {
 
   const [loading, setLoading] = useState(true);
 
+
   // ==========================================================
   // LOAD CURRENT USER
   // ==========================================================
 
   useEffect(() => {
+
     const loadUser = async () => {
+
       // No token → user is not logged in
       if (!token) {
+
         setUser(null);
         setLoading(false);
+
         return;
       }
 
       try {
+
         setLoading(true);
 
-        const response = await api.get("/auth/me");
+        const response = await api.get(
+          "/auth/me"
+        );
 
         setUser(response.data);
+
       } catch (error) {
+
         console.error(
           "Failed to load user:",
           error
         );
 
-        // Token is invalid or expired
-        localStorage.removeItem("token");
+        localStorage.removeItem(
+          "token"
+        );
 
         setToken(null);
         setUser(null);
+
       } finally {
+
         setLoading(false);
+
       }
     };
 
     loadUser();
+
   }, [token]);
+
 
   // ==========================================================
   // SIGNUP
   // ==========================================================
 
   const signup = async (userData) => {
+
     return await api.post(
       "/auth/signup",
       userData
     );
+
   };
+
 
   // ==========================================================
   // RESEND VERIFICATION EMAIL
   // ==========================================================
 
-  const resendVerification = async (email) => {
+  const resendVerification = async (
+    email
+  ) => {
+
     const response = await api.post(
       "/auth/resend-verification",
       {
@@ -84,14 +107,21 @@ export function AuthProvider({ children }) {
     );
 
     return response.data;
+
   };
+
 
   // ==========================================================
   // LOGIN
   // ==========================================================
 
-  const login = async (email, password) => {
-    const formData = new URLSearchParams();
+  const login = async (
+    email,
+    password
+  ) => {
+
+    const formData =
+      new URLSearchParams();
 
     formData.append(
       "username",
@@ -125,32 +155,88 @@ export function AuthProvider({ children }) {
 
     // Update token state
     setToken(accessToken);
+
   };
+
 
   // ==========================================================
   // UPDATE USER
   // ==========================================================
 
-  const updateUser = (updatedUser) => {
+  const updateUser = (
+    updatedUser
+  ) => {
+
     setUser(updatedUser);
+
   };
+
+
+  // ==========================================================
+  // DELETE ACCOUNT
+  // ==========================================================
+
+  const deleteAccount = async () => {
+
+    try {
+
+      await api.delete(
+        "/auth/me"
+      );
+
+      // ------------------------------------------------------
+      // DELETE TOKEN
+      // ------------------------------------------------------
+
+      localStorage.removeItem(
+        "token"
+      );
+
+      // ------------------------------------------------------
+      // CLEAR AUTH STATE
+      // ------------------------------------------------------
+
+      setToken(null);
+      setUser(null);
+
+      return true;
+
+    } catch (error) {
+
+      console.error(
+        "Failed to delete account:",
+        error
+      );
+
+      throw error;
+
+    }
+
+  };
+
 
   // ==========================================================
   // LOGOUT
   // ==========================================================
 
   const logout = () => {
-    localStorage.removeItem("token");
+
+    localStorage.removeItem(
+      "token"
+    );
 
     setToken(null);
     setUser(null);
+
   };
+
 
   // ==========================================================
   // AUTH CONTEXT
   // ==========================================================
 
   return (
+
     <AuthContext.Provider
       value={{
         token,
@@ -161,12 +247,18 @@ export function AuthProvider({ children }) {
         login,
         logout,
         updateUser,
+        deleteAccount,
       }}
     >
+
       {children}
+
     </AuthContext.Provider>
+
   );
+
 }
+
 
 // ==========================================================
 // USE AUTH HOOK

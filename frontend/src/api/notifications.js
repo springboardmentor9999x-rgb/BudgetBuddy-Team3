@@ -1,13 +1,28 @@
 import api from "./axios";
 
-// Get current user's notifications
+// ==========================================================
+// GET CURRENT USER'S NOTIFICATIONS
+// ==========================================================
+
 export const getNotifications = async () => {
-  const response = await api.get("/notifications/");
+  const response = await api.get(
+    "/notifications/"
+  );
+
   return response.data;
 };
 
-// Mark notification as read
-export const markNotificationAsRead = async (id) => {
-  const response = await api.patch(`/notifications/${id}/read`);
+
+// ==========================================================
+// MARK NOTIFICATION AS READ
+// ==========================================================
+
+export const markNotificationAsRead = async (
+  id
+) => {
+  const response = await api.patch(
+    `/notifications/${id}/read`
+  );
+
   return response.data;
 };

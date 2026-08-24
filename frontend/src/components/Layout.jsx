@@ -137,6 +137,7 @@ export default function Layout({ children }) {
 
                 </button>
               );
+
             })}
 
           </div>
@@ -202,39 +203,11 @@ export default function Layout({ children }) {
           "
         >
 
-          {/* LEFT */}
+          {/* LEFT - ONLY WELCOME MESSAGE */}
 
           <div>
 
-            <h2 className="text-xl font-semibold text-gray-800">
-
-              {location.pathname === "/dashboard" &&
-                "Dashboard"}
-
-              {location.pathname === "/income" &&
-                "Income"}
-
-              {location.pathname === "/expense" &&
-                "Expenses"}
-
-              {location.pathname === "/budget" &&
-                "Budgets"}
-
-              {location.pathname === "/savings-goals" &&
-                "Savings Goals"}
-
-              {location.pathname === "/analytics" &&
-                "Analytics"}
-
-              {location.pathname === "/bank-account" &&
-                "Bank Accounts"}
-
-              {location.pathname === "/profile" &&
-                "Profile"}
-
-            </h2>
-
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-xl font-semibold text-gray-800">
               Welcome back, {user?.full_name || user?.email}
             </p>
 

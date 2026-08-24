@@ -39,13 +39,20 @@ def get_budget_for_category(
     category: str,
     month_year: str
 ):
+    """
+    Find the budget for the user's category and month.
+
+    Category comparison is case-insensitive.
+    """
+
     return (
         db.query(Budget)
         .filter(
             Budget.user_id == user_id,
-            Budget.category == category,
+            func.lower(Budget.category) == category.lower(),
             Budget.month_year == month_year
         )
+        .order_by(Budget.id.desc())
         .first()
     )
 
@@ -61,6 +68,13 @@ def get_total_spent_this_month(
     year: int,
     month: int
 ):
+    """
+    Calculate total expenses for the user's category
+    during the specified month.
+
+    Category comparison is case-insensitive.
+    """
+
     total = (
         db.query(
             func.coalesce(
@@ -70,9 +84,19 @@ def get_total_spent_this_month(
         )
         .filter(
             Expense.user_id == user_id,
-            Expense.category == category,
-            func.extract("year", Expense.date) == year,
-            func.extract("month", Expense.date) == month
+
+            func.lower(Expense.category) ==
+            category.lower(),
+
+            func.extract(
+                "year",
+                Expense.date
+            ) == year,
+
+            func.extract(
+                "month",
+                Expense.date
+            ) == month
         )
         .scalar()
     )
@@ -90,20 +114,30 @@ def check_budget_alert(
     expense: Expense
 ):
     """
-    Check whether the expense causes the user's
-    monthly category budget to be exceeded.
+    Check whether the user's category budget has been
+    exceeded after an expense.
 
-    If the budget is exceeded, create one unread
-    budget notification for that category/month.
+    Creates one unread notification for the category/month.
+
+    If an unread alert already exists for the same
+    category/month, its message and time are updated.
     """
 
+    # ------------------------------------------------------
+    # EXPENSE DATE
+    # ------------------------------------------------------
+
     expense_date = expense.date
+
+    if not expense_date:
+        return None
 
     year = expense_date.year
     month = expense_date.month
 
-    # Budget uses YYYY-MM format
     month_year = f"{year:04d}-{month:02d}"
+
+    category = expense.category
 
     # ------------------------------------------------------
     # FIND MATCHING BUDGET
@@ -112,7 +146,7 @@ def check_budget_alert(
     budget = get_budget_for_category(
         db=db,
         user_id=user_id,
-        category=expense.category,
+        category=category,
         month_year=month_year
     )
 
@@ -126,26 +160,34 @@ def check_budget_alert(
     total_spent = get_total_spent_this_month(
         db=db,
         user_id=user_id,
-        category=expense.category,
+        category=category,
         year=year,
         month=month
     )
 
     # ------------------------------------------------------
-    # CHECK WHETHER BUDGET IS EXCEEDED
+    # BUDGET NOT EXCEEDED
     # ------------------------------------------------------
 
-    if total_spent <= budget.monthly_limit:
+    if total_spent <= float(budget.monthly_limit):
         return None
 
     # ------------------------------------------------------
-    # CHECK FOR EXISTING BUDGET ALERT
+    # CREATE NOTIFICATION MESSAGE
     # ------------------------------------------------------
 
     notification_message = (
-        f"You've exceeded your {expense.category} budget. "
-        f"Spent ₹{total_spent:.2f} of ₹{budget.monthly_limit:.2f}."
+        f"You've exceeded your {category} budget. "
+        f"Spent ₹{total_spent:.2f} "
+        f"of ₹{float(budget.monthly_limit):.2f}."
     )
+
+    # ------------------------------------------------------
+    # FIND EXISTING UNREAD ALERT
+    #
+    # We identify the category from the beginning of
+    # the notification message.
+    # ------------------------------------------------------
 
     existing_notification = (
         db.query(Notification)
@@ -153,29 +195,39 @@ def check_budget_alert(
             Notification.user_id == user_id,
             Notification.type == "budget_alert",
             Notification.message.like(
-                f"You've exceeded your {expense.category} budget.%"
+                f"You've exceeded your {category} budget.%"
             ),
-            Notification.is_read == False
+            Notification.is_read.is_(False)
+        )
+        .order_by(
+            Notification.created_at.desc()
         )
         .first()
     )
 
     # ------------------------------------------------------
-    # DON'T CREATE DUPLICATE ALERT
+    # UPDATE EXISTING ALERT
     # ------------------------------------------------------
 
     if existing_notification:
-        # Update the existing notification with the
-        # latest spending amount.
-        existing_notification.message = notification_message
+
+        existing_notification.message = (
+            notification_message
+        )
+
+        existing_notification.created_at = (
+            datetime.utcnow()
+        )
 
         db.commit()
-        db.refresh(existing_notification)
+        db.refresh(
+            existing_notification
+        )
 
         return existing_notification
 
     # ------------------------------------------------------
-    # CREATE NEW NOTIFICATION
+    # CREATE NEW ALERT
     # ------------------------------------------------------
 
     notification = Notification(
@@ -187,6 +239,7 @@ def check_budget_alert(
     )
 
     db.add(notification)
+
     db.commit()
     db.refresh(notification)
 
@@ -213,8 +266,11 @@ def create_expense(
         account = (
             db.query(BankAccount)
             .filter(
-                BankAccount.id == expense_in.bank_account_id,
-                BankAccount.user_id == user_id
+                BankAccount.id ==
+                expense_in.bank_account_id,
+
+                BankAccount.user_id ==
+                user_id
             )
             .first()
         )
@@ -247,9 +303,9 @@ def create_expense(
     db.commit()
     db.refresh(expense)
 
-    # ======================================================
-    # BUDGET ALERT
-    # ======================================================
+    # ------------------------------------------------------
+    # CHECK BUDGET
+    # ------------------------------------------------------
 
     check_budget_alert(
         db=db,
@@ -311,8 +367,11 @@ def update_expense(
         old_account = (
             db.query(BankAccount)
             .filter(
-                BankAccount.id == expense.bank_account_id,
-                BankAccount.user_id == user_id
+                BankAccount.id ==
+                expense.bank_account_id,
+
+                BankAccount.user_id ==
+                user_id
             )
             .first()
         )
@@ -328,8 +387,11 @@ def update_expense(
         new_account = (
             db.query(BankAccount)
             .filter(
-                BankAccount.id == expense_in.bank_account_id,
-                BankAccount.user_id == user_id
+                BankAccount.id ==
+                expense_in.bank_account_id,
+
+                BankAccount.user_id ==
+                user_id
             )
             .first()
         )
@@ -358,14 +420,18 @@ def update_expense(
     update_data = expense_in.model_dump()
 
     for key, value in update_data.items():
-        setattr(expense, key, value)
+        setattr(
+            expense,
+            key,
+            value
+        )
 
     db.commit()
     db.refresh(expense)
 
-    # ======================================================
-    # CHECK BUDGET AFTER UPDATE
-    # ======================================================
+    # ------------------------------------------------------
+    # CHECK BUDGET AGAIN
+    # ------------------------------------------------------
 
     check_budget_alert(
         db=db,
@@ -395,7 +461,7 @@ def delete_expense(
         return None
 
     # ------------------------------------------------------
-    # RESTORE MONEY TO BANK ACCOUNT
+    # RESTORE BANK BALANCE
     # ------------------------------------------------------
 
     if expense.bank_account_id is not None:
@@ -403,8 +469,11 @@ def delete_expense(
         account = (
             db.query(BankAccount)
             .filter(
-                BankAccount.id == expense.bank_account_id,
-                BankAccount.user_id == user_id
+                BankAccount.id ==
+                expense.bank_account_id,
+
+                BankAccount.user_id ==
+                user_id
             )
             .first()
         )
@@ -417,6 +486,7 @@ def delete_expense(
     # ------------------------------------------------------
 
     db.delete(expense)
+
     db.commit()
 
     return expense

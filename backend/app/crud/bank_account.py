@@ -1,6 +1,9 @@
 from sqlalchemy.orm import Session
 
 from app.models.bank_account import BankAccount
+from app.models.income import Income
+from app.models.expense import Expense
+from app.models.savings_goal import SavingsGoal
 from app.schemas.bank_account import BankAccountCreate
 
 
@@ -120,7 +123,57 @@ def delete_bank_account(
     if not account:
         return None
 
+    # ------------------------------------------------------
+    # KEEP INCOME HISTORY
+    # ------------------------------------------------------
+    # Remove only the bank-account reference.
+    # The income record itself is NOT deleted.
+    db.query(Income).filter(
+        Income.bank_account_id == account_id,
+        Income.user_id == user_id
+    ).update(
+        {
+            Income.bank_account_id: None
+        },
+        synchronize_session=False
+    )
+
+    # ------------------------------------------------------
+    # KEEP EXPENSE HISTORY
+    # ------------------------------------------------------
+    # Remove only the bank-account reference.
+    # The expense record itself is NOT deleted.
+    db.query(Expense).filter(
+        Expense.bank_account_id == account_id,
+        Expense.user_id == user_id
+    ).update(
+        {
+            Expense.bank_account_id: None
+        },
+        synchronize_session=False
+    )
+
+    # ------------------------------------------------------
+    # KEEP SAVINGS GOAL
+    # ------------------------------------------------------
+    # Remove only the bank-account reference.
+    # The savings goal itself is NOT deleted.
+    db.query(SavingsGoal).filter(
+        SavingsGoal.bank_account_id == account_id,
+        SavingsGoal.user_id == user_id
+    ).update(
+        {
+            SavingsGoal.bank_account_id: None
+        },
+        synchronize_session=False
+    )
+
+    # ------------------------------------------------------
+    # DELETE ONLY THE BANK ACCOUNT
+    # ------------------------------------------------------
+
     db.delete(account)
+
     db.commit()
 
     return account
