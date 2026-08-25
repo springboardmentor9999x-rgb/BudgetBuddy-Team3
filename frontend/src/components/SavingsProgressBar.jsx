@@ -1,33 +1,86 @@
+function formatCurrency(value) {
+  return `₹${Number(value || 0).toLocaleString("en-IN")}`;
+}
+
 function SavingsProgressBar({ goals }) {
+  if (goals.length === 0) {
+    return (
+      <div className="empty-goals">
+        <div className="empty-goals-icon">
+          🎯
+        </div>
+
+        <h3>No savings goals yet</h3>
+
+        <p>
+          Create your first savings goal and start building
+          toward it.
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="chart-card">
-      <h2>Savings Goals Progress</h2>
+    <div className="goals-grid">
+      {goals.map((goal) => {
+        const percentage = Math.min(
+          Number(goal.percentage || 0),
+          100
+        );
 
-      {goals.length === 0 ? (
-        <p>No savings goals available.</p>
-      ) : (
-        goals.map((goal) => (
-          <div key={goal.id} className="goal-progress">
-            <div className="goal-header">
-              <span>{goal.title}</span>
-              <span>{goal.percentage}%</span>
+        const completed = percentage >= 100;
+
+        return (
+          <div
+            key={goal.id}
+            className={`goal-card ${
+              completed ? "goal-completed" : ""
+            }`}
+          >
+            <div className="goal-card-top">
+              <div className="goal-icon">
+                {completed ? "✓" : "🎯"}
+              </div>
+
+              <div className="goal-title-area">
+                <h4>{goal.title}</h4>
+
+                <span>
+                  {completed
+                    ? "Goal completed"
+                    : "In progress"}
+                </span>
+              </div>
+
+              <div className="goal-percentage">
+                {percentage}%
+              </div>
             </div>
 
-            <div className="progress-container">
+            <div className="goal-progress-track">
               <div
-                className="progress-bar"
+                className="goal-progress-fill"
                 style={{
-                  width: `${Math.min(goal.percentage, 100)}%`,
+                  width: `${percentage}%`,
                 }}
-              />
+              ></div>
             </div>
 
-            <small>
-              ₹{goal.current_amount} / ₹{goal.target_amount}
-            </small>
+            <div className="goal-card-bottom">
+              <span>
+                <strong>
+                  {formatCurrency(goal.current_amount)}
+                </strong>{" "}
+                saved
+              </span>
+
+              <span>
+                of {formatCurrency(goal.target_amount)}
+              </span>
+            </div>
           </div>
-        ))
-      )}
+        );
+      })}
     </div>
   );
 }

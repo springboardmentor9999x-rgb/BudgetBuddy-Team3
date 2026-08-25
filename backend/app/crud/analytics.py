@@ -9,19 +9,59 @@ from app.models.savings_goal import SavingsGoal
 
 
 # ==========================================================
+# HELPER — SELECTED PERIOD
+# ==========================================================
+
+def _get_selected_period(
+    month: int | None = None,
+    year: int | None = None
+):
+    """
+    Returns the selected month and year.
+
+    If month/year are not supplied, the current
+    system month/year are used.
+    """
+
+    now = datetime.now()
+
+    selected_month = (
+        month
+        if month is not None
+        else now.month
+    )
+
+    selected_year = (
+        year
+        if year is not None
+        else now.year
+    )
+
+    return selected_month, selected_year
+
+
+# ==========================================================
 # SPENDING BY CATEGORY
 # ==========================================================
 
 def get_spending_by_category(
     db: Session,
-    user_id: int
+    user_id: int,
+    month: int | None = None,
+    year: int | None = None
 ):
     """
-    Returns total spending grouped by expense category
-    for the current month.
+    Returns total spending grouped by category
+    for the selected month/year.
+
+    If month/year are not provided, the current
+    month/year are used.
     """
 
-    now = datetime.utcnow()
+    selected_month, selected_year = _get_selected_period(
+        month,
+        year
+    )
 
     results = (
         db.query(
@@ -30,11 +70,23 @@ def get_spending_by_category(
         )
         .filter(
             Expense.user_id == user_id,
-            extract("year", Expense.date) == now.year,
-            extract("month", Expense.date) == now.month
+            extract(
+                "year",
+                Expense.date
+            ) == selected_year,
+            extract(
+                "month",
+                Expense.date
+            ) == selected_month
         )
-        .group_by(Expense.category)
-        .order_by(func.sum(Expense.amount).desc())
+        .group_by(
+            Expense.category
+        )
+        .order_by(
+            func.sum(
+                Expense.amount
+            ).desc()
+        )
         .all()
     )
 
@@ -57,70 +109,113 @@ def get_monthly_trend(
     months: int = 6
 ):
     """
-    Returns income and expense totals for the last
-    `months` months.
+    Returns income and expense totals for the
+    requested number of recent months.
 
-    Months with no transactions are included with 0 values.
+    Months without transactions are included
+    with zero values.
     """
 
-    now = datetime.utcnow()
+    now = datetime.now()
 
     # ------------------------------------------------------
-    # Get income grouped by year and month
+    # INCOME
     # ------------------------------------------------------
 
     income_results = (
         db.query(
-            extract("year", Income.date).label("year"),
-            extract("month", Income.date).label("month"),
-            func.sum(Income.amount).label("total")
+            extract(
+                "year",
+                Income.date
+            ).label("year"),
+
+            extract(
+                "month",
+                Income.date
+            ).label("month"),
+
+            func.sum(
+                Income.amount
+            ).label("total")
         )
         .filter(
             Income.user_id == user_id
         )
         .group_by(
-            extract("year", Income.date),
-            extract("month", Income.date)
+            extract(
+                "year",
+                Income.date
+            ),
+            extract(
+                "month",
+                Income.date
+            )
         )
         .all()
     )
 
     # ------------------------------------------------------
-    # Get expenses grouped by year and month
+    # EXPENSES
     # ------------------------------------------------------
 
     expense_results = (
         db.query(
-            extract("year", Expense.date).label("year"),
-            extract("month", Expense.date).label("month"),
-            func.sum(Expense.amount).label("total")
+            extract(
+                "year",
+                Expense.date
+            ).label("year"),
+
+            extract(
+                "month",
+                Expense.date
+            ).label("month"),
+
+            func.sum(
+                Expense.amount
+            ).label("total")
         )
         .filter(
             Expense.user_id == user_id
         )
         .group_by(
-            extract("year", Expense.date),
-            extract("month", Expense.date)
+            extract(
+                "year",
+                Expense.date
+            ),
+            extract(
+                "month",
+                Expense.date
+            )
         )
         .all()
     )
 
     # ------------------------------------------------------
-    # Convert database results into dictionaries
+    # CREATE LOOKUP MAPS
     # ------------------------------------------------------
 
     income_map = {
-        (int(year), int(month)): float(total or 0)
-        for year, month, total in income_results
+        (
+            int(year),
+            int(month)
+        ): float(total or 0)
+
+        for year, month, total
+        in income_results
     }
 
     expense_map = {
-        (int(year), int(month)): float(total or 0)
-        for year, month, total in expense_results
+        (
+            int(year),
+            int(month)
+        ): float(total or 0)
+
+        for year, month, total
+        in expense_results
     }
 
     # ------------------------------------------------------
-    # Build rolling month list
+    # BUILD MONTH LIST
     # ------------------------------------------------------
 
     result = []
@@ -130,25 +225,39 @@ def get_monthly_trend(
 
     for _ in range(months):
 
-        key = (year, month)
+        key = (
+            year,
+            month
+        )
 
         result.append(
             {
-                "month": f"{year:04d}-{month:02d}",
-                "total_income": income_map.get(key, 0),
-                "total_expenses": expense_map.get(key, 0)
+                "month": (
+                    f"{year:04d}-{month:02d}"
+                ),
+
+                "total_income":
+                    income_map.get(
+                        key,
+                        0
+                    ),
+
+                "total_expenses":
+                    expense_map.get(
+                        key,
+                        0
+                    )
             }
         )
 
-        # Move one month backwards
+        # Move backward one month
         month -= 1
 
         if month == 0:
             month = 12
             year -= 1
 
-    # We generated newest -> oldest.
-    # Reverse so frontend charts display oldest -> newest.
+    # Oldest -> newest
     result.reverse()
 
     return result
@@ -163,15 +272,20 @@ def get_savings_progress(
     user_id: int
 ):
     """
-    Returns all savings goals with completion percentage.
+    Returns all savings goals with completion
+    percentage.
     """
 
     goals = (
-        db.query(SavingsGoal)
+        db.query(
+            SavingsGoal
+        )
         .filter(
             SavingsGoal.user_id == user_id
         )
-        .order_by(SavingsGoal.created_at.desc())
+        .order_by(
+            SavingsGoal.created_at.desc()
+        )
         .all()
     )
 
@@ -179,34 +293,58 @@ def get_savings_progress(
 
     for goal in goals:
 
-        target_amount = float(goal.target_amount or 0)
-        current_amount = float(goal.current_amount or 0)
+        target_amount = float(
+            goal.target_amount or 0
+        )
+
+        current_amount = float(
+            goal.current_amount or 0
+        )
 
         # --------------------------------------------------
-        # Protect against division by zero
+        # CALCULATE PERCENTAGE
         # --------------------------------------------------
 
         if target_amount > 0:
+
             percentage = (
-                current_amount / target_amount
+                current_amount
+                / target_amount
             ) * 100
+
         else:
+
             percentage = 0
 
         # --------------------------------------------------
-        # Prevent percentage above 100
+        # LIMIT TO 100%
         # --------------------------------------------------
 
-        percentage = min(percentage, 100)
+        percentage = min(
+            percentage,
+            100
+        )
 
         result.append(
             {
                 "id": goal.id,
+
                 "title": goal.title,
-                "target_amount": target_amount,
-                "current_amount": current_amount,
-                "percentage": round(percentage, 2),
-                "status": goal.status
+
+                "target_amount":
+                    target_amount,
+
+                "current_amount":
+                    current_amount,
+
+                "percentage":
+                    round(
+                        percentage,
+                        2
+                    ),
+
+                "status":
+                    goal.status
             }
         )
 
@@ -219,67 +357,139 @@ def get_savings_progress(
 
 def get_analytics_summary(
     db: Session,
-    user_id: int
+    user_id: int,
+    month: int | None = None,
+    year: int | None = None
 ):
     """
-    Returns current month's income, expenses,
-    net balance and savings rate.
+    Returns:
+
+    - Total income
+    - Total expenses
+    - Net balance
+    - Savings rate
+
+    for the selected month/year.
+
+    If month/year are not provided,
+    the current month/year are used.
     """
 
-    now = datetime.utcnow()
+    selected_month, selected_year = _get_selected_period(
+        month,
+        year
+    )
 
     # ------------------------------------------------------
     # TOTAL INCOME
     # ------------------------------------------------------
 
     total_income = (
-        db.query(func.sum(Income.amount))
+        db.query(
+            func.sum(
+                Income.amount
+            )
+        )
         .filter(
             Income.user_id == user_id,
-            extract("year", Income.date) == now.year,
-            extract("month", Income.date) == now.month
+
+            extract(
+                "year",
+                Income.date
+            ) == selected_year,
+
+            extract(
+                "month",
+                Income.date
+            ) == selected_month
         )
         .scalar()
     )
 
-    total_income = float(total_income or 0)
+    total_income = float(
+        total_income or 0
+    )
 
     # ------------------------------------------------------
     # TOTAL EXPENSES
     # ------------------------------------------------------
 
     total_expenses = (
-        db.query(func.sum(Expense.amount))
+        db.query(
+            func.sum(
+                Expense.amount
+            )
+        )
         .filter(
             Expense.user_id == user_id,
-            extract("year", Expense.date) == now.year,
-            extract("month", Expense.date) == now.month
+
+            extract(
+                "year",
+                Expense.date
+            ) == selected_year,
+
+            extract(
+                "month",
+                Expense.date
+            ) == selected_month
         )
         .scalar()
     )
 
-    total_expenses = float(total_expenses or 0)
+    total_expenses = float(
+        total_expenses or 0
+    )
 
     # ------------------------------------------------------
     # NET BALANCE
     # ------------------------------------------------------
 
-    net_balance = total_income - total_expenses
+    net_balance = (
+        total_income
+        - total_expenses
+    )
 
     # ------------------------------------------------------
     # SAVINGS RATE
     # ------------------------------------------------------
 
     if total_income > 0:
+
         savings_rate = (
-            net_balance / total_income
+            net_balance
+            / total_income
         ) * 100
+
     else:
+
         savings_rate = 0
 
+    # ------------------------------------------------------
+    # RESPONSE
+    # ------------------------------------------------------
+
     return {
-        "total_income": round(total_income, 2),
-        "total_expenses": round(total_expenses, 2),
-        "net_balance": round(net_balance, 2),
-        "savings_rate": round(savings_rate, 2)
+        "total_income":
+            round(
+                total_income,
+                2
+            ),
+
+        "total_expenses":
+            round(
+                total_expenses,
+                2
+            ),
+
+        "net_balance":
+            round(
+                net_balance,
+                2
+            ),
+
+        "savings_rate":
+            round(
+                savings_rate,
+                2
+            )
     }

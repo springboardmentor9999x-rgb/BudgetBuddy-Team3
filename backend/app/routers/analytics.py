@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -34,12 +34,24 @@ router = APIRouter(
     response_model=list[SpendingByCategoryOut]
 )
 def spending_by_category(
+    month: int | None = Query(
+        default=None,
+        ge=1,
+        le=12
+    ),
+    year: int | None = Query(
+        default=None,
+        ge=2000,
+        le=2100
+    ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     return analytics_crud.get_spending_by_category(
-        db,
-        current_user.id
+        db=db,
+        user_id=current_user.id,
+        month=month,
+        year=year
     )
 
 
@@ -52,13 +64,18 @@ def spending_by_category(
     response_model=list[MonthlyTrendOut]
 )
 def monthly_trend(
+    months: int = Query(
+        default=6,
+        ge=1,
+        le=24
+    ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     return analytics_crud.get_monthly_trend(
-        db,
-        current_user.id,
-        months=6
+        db=db,
+        user_id=current_user.id,
+        months=months
     )
 
 
@@ -75,8 +92,8 @@ def savings_progress(
     current_user: User = Depends(get_current_user)
 ):
     return analytics_crud.get_savings_progress(
-        db,
-        current_user.id
+        db=db,
+        user_id=current_user.id
     )
 
 
@@ -89,10 +106,22 @@ def savings_progress(
     response_model=AnalyticsSummaryOut
 )
 def analytics_summary(
+    month: int | None = Query(
+        default=None,
+        ge=1,
+        le=12
+    ),
+    year: int | None = Query(
+        default=None,
+        ge=2000,
+        le=2100
+    ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     return analytics_crud.get_analytics_summary(
-        db,
-        current_user.id
+        db=db,
+        user_id=current_user.id,
+        month=month,
+        year=year
     )

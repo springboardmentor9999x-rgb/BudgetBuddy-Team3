@@ -9,40 +9,153 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
+function formatCurrency(value) {
+  return `₹${Number(value || 0).toLocaleString("en-IN")}`;
+}
+
+function TrendTooltip({ active, payload, label }) {
+  if (!active || !payload || !payload.length) {
+    return null;
+  }
+
+  return (
+    <div className="custom-tooltip trend-tooltip">
+      <div className="tooltip-month">
+        {label}
+      </div>
+
+      {payload.map((item) => (
+        <div
+          className="trend-tooltip-row"
+          key={item.dataKey}
+        >
+          <span
+            className="trend-tooltip-dot"
+            style={{
+              background: item.color,
+            }}
+          ></span>
+
+          <span>{item.name}</span>
+
+          <strong>
+            {formatCurrency(item.value)}
+          </strong>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function MonthlyTrendLineChart({ data }) {
   return (
-    <div className="chart-card">
-      <h2>Monthly Income & Expenses</h2>
+    <div className="trend-chart-wrapper">
+      {data.length === 0 ? (
+        <div className="empty-chart">
+          <div className="empty-chart-icon">↗</div>
 
-      <ResponsiveContainer width="100%" height={350}>
-        <LineChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" />
+          <h4>No monthly data</h4>
 
-          <XAxis dataKey="month" />
+          <p>
+            Add income and expenses to see your financial trend.
+          </p>
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height={330}>
+          <LineChart
+            data={data}
+            margin={{
+              top: 10,
+              right: 18,
+              left: 0,
+              bottom: 5,
+            }}
+          >
+            <CartesianGrid
+              strokeDasharray="4 4"
+              vertical={false}
+              stroke="#edf0f5"
+            />
 
-          <YAxis />
+            <XAxis
+              dataKey="month"
+              axisLine={false}
+              tickLine={false}
+              tick={{
+                fill: "#8b95a7",
+                fontSize: 11,
+              }}
+            />
 
-          <Tooltip />
+            <YAxis
+              axisLine={false}
+              tickLine={false}
+              tick={{
+                fill: "#8b95a7",
+                fontSize: 11,
+              }}
+              tickFormatter={(value) =>
+                value >= 1000
+                  ? `₹${(value / 1000).toFixed(0)}k`
+                  : `₹${value}`
+              }
+            />
 
-          <Legend />
+            <Tooltip
+              content={<TrendTooltip />}
+              cursor={{
+                stroke: "#cfd5e1",
+                strokeDasharray: "4 4",
+              }}
+            />
 
-          <Line
-            type="monotone"
-            dataKey="total_income"
-            name="Income"
-            stroke="#22c55e"
-            strokeWidth={3}
-          />
+            <Legend
+              verticalAlign="top"
+              align="right"
+              height={35}
+              iconType="circle"
+              wrapperStyle={{
+                fontSize: "11px",
+                color: "#707a8d",
+              }}
+            />
 
-          <Line
-            type="monotone"
-            dataKey="total_expenses"
-            name="Expenses"
-            stroke="#ef4444"
-            strokeWidth={3}
-          />
-        </LineChart>
-      </ResponsiveContainer>
+            <Line
+              type="monotone"
+              dataKey="total_income"
+              name="Income"
+              stroke="#22b573"
+              strokeWidth={3}
+              dot={{
+                r: 3,
+                strokeWidth: 2,
+                fill: "#ffffff",
+              }}
+              activeDot={{
+                r: 6,
+                strokeWidth: 2,
+              }}
+            />
+
+            <Line
+              type="monotone"
+              dataKey="total_expenses"
+              name="Expenses"
+              stroke="#ef5b5b"
+              strokeWidth={3}
+              dot={{
+                r: 3,
+                strokeWidth: 2,
+                fill: "#ffffff",
+              }}
+              activeDot={{
+                r: 6,
+                strokeWidth: 2,
+              }}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      )}
     </div>
   );
 }
