@@ -129,7 +129,10 @@ function AnalyticsDashboard() {
 
         getMonthlyTrend(6),
 
-        getSavingsProgress(),
+        getSavingsProgress(
+          month,
+          year
+        ),
 
         getAnalyticsSummary(
           month,
@@ -226,7 +229,7 @@ function AnalyticsDashboard() {
 
   /* =======================================================
      GENERATE MONTH OPTIONS
-  ======================================================= */
+========================================================= */
 
   const generateMonthOptions = () => {
 
@@ -243,6 +246,7 @@ function AnalyticsDashboard() {
      * Show current month + previous 11 months.
      *
      * Example:
+     *
      * August 2026
      * July 2026
      * June 2026
@@ -930,6 +934,7 @@ function AnalyticsDashboard() {
             <div className="chart-badge">
 
               {spendingData.length}{" "}
+
               {spendingData.length === 1
                 ? "category"
                 : "categories"}

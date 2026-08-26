@@ -1,5 +1,6 @@
 import api from "./axios";
 
+
 /* =========================================================
    SPENDING BY CATEGORY
 ========================================================= */
@@ -8,13 +9,20 @@ export const getSpendingByCategory = async (
   month = null,
   year = null
 ) => {
+
   const params = {};
 
-  if (month !== null && month !== undefined) {
+  if (
+    month !== null &&
+    month !== undefined
+  ) {
     params.month = month;
   }
 
-  if (year !== null && year !== undefined) {
+  if (
+    year !== null &&
+    year !== undefined
+  ) {
     params.year = year;
   }
 
@@ -36,6 +44,7 @@ export const getSpendingByCategory = async (
 export const getMonthlyTrend = async (
   months = 6
 ) => {
+
   const response = await api.get(
     "/analytics/monthly-trend",
     {
@@ -53,9 +62,32 @@ export const getMonthlyTrend = async (
    SAVINGS PROGRESS
 ========================================================= */
 
-export const getSavingsProgress = async () => {
+export const getSavingsProgress = async (
+  month = null,
+  year = null
+) => {
+
+  const params = {};
+
+  if (
+    month !== null &&
+    month !== undefined
+  ) {
+    params.month = month;
+  }
+
+  if (
+    year !== null &&
+    year !== undefined
+  ) {
+    params.year = year;
+  }
+
   const response = await api.get(
-    "/analytics/savings-progress"
+    "/analytics/savings-progress",
+    {
+      params,
+    }
   );
 
   return response.data;
@@ -70,13 +102,20 @@ export const getAnalyticsSummary = async (
   month = null,
   year = null
 ) => {
+
   const params = {};
 
-  if (month !== null && month !== undefined) {
+  if (
+    month !== null &&
+    month !== undefined
+  ) {
     params.month = month;
   }
 
-  if (year !== null && year !== undefined) {
+  if (
+    year !== null &&
+    year !== undefined
+  ) {
     params.year = year;
   }
 

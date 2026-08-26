@@ -88,12 +88,24 @@ def monthly_trend(
     response_model=list[SavingsProgressOut]
 )
 def savings_progress(
+    month: int | None = Query(
+        default=None,
+        ge=1,
+        le=12
+    ),
+    year: int | None = Query(
+        default=None,
+        ge=2000,
+        le=2100
+    ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     return analytics_crud.get_savings_progress(
         db=db,
-        user_id=current_user.id
+        user_id=current_user.id,
+        month=month,
+        year=year
     )
 
 

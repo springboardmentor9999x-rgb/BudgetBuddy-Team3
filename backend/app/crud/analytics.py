@@ -70,10 +70,12 @@ def get_spending_by_category(
         )
         .filter(
             Expense.user_id == user_id,
+
             extract(
                 "year",
                 Expense.date
             ) == selected_year,
+
             extract(
                 "month",
                 Expense.date
@@ -269,12 +271,56 @@ def get_monthly_trend(
 
 def get_savings_progress(
     db: Session,
-    user_id: int
+    user_id: int,
+    month: int | None = None,
+    year: int | None = None
 ):
     """
-    Returns all savings goals with completion
-    percentage.
+    Returns savings goals that are active during
+    the selected month/year.
+
+    A savings goal is shown when:
+
+        created month <= selected month <= target month
+
+    Example:
+
+        Created: June 2026
+        Target:  August 2026
+
+        June    -> shown
+        July    -> shown
+        August  -> shown
+        September -> hidden
+
+    If target_date is not provided, the goal remains
+    visible from its creation month onward.
     """
+
+    selected_month, selected_year = _get_selected_period(
+        month,
+        year
+    )
+
+    # ------------------------------------------------------
+    # CREATE A MONTH INDEX
+    # ------------------------------------------------------
+    #
+    # Example:
+    #
+    # August 2026 -> 2026 * 12 + 8
+    #
+    # This makes comparing months across years easy.
+    #
+
+    selected_month_index = (
+        selected_year * 12
+        + selected_month
+    )
+
+    # ------------------------------------------------------
+    # GET USER GOALS
+    # ------------------------------------------------------
 
     goals = (
         db.query(
@@ -292,6 +338,58 @@ def get_savings_progress(
     result = []
 
     for goal in goals:
+
+        # --------------------------------------------------
+        # CREATED MONTH
+        # --------------------------------------------------
+
+        if goal.created_at is not None:
+
+            created_month_index = (
+                goal.created_at.year * 12
+                + goal.created_at.month
+            )
+
+        else:
+
+            # If somehow created_at is missing,
+            # allow the goal to remain visible.
+            created_month_index = selected_month_index
+
+        # --------------------------------------------------
+        # TARGET MONTH
+        # --------------------------------------------------
+
+        target_month_index = None
+
+        if goal.target_date is not None:
+
+            target_month_index = (
+                goal.target_date.year * 12
+                + goal.target_date.month
+            )
+
+        # --------------------------------------------------
+        # CHECK WHETHER GOAL BELONGS TO SELECTED MONTH
+        # --------------------------------------------------
+
+        # Goal cannot appear before it was created.
+
+        if selected_month_index < created_month_index:
+            continue
+
+        # If target date exists, the goal cannot appear
+        # after its target month.
+
+        if (
+            target_month_index is not None
+            and selected_month_index > target_month_index
+        ):
+            continue
+
+        # --------------------------------------------------
+        # AMOUNTS
+        # --------------------------------------------------
 
         target_amount = float(
             goal.target_amount or 0
@@ -324,6 +422,10 @@ def get_savings_progress(
             percentage,
             100
         )
+
+        # --------------------------------------------------
+        # RESPONSE
+        # --------------------------------------------------
 
         result.append(
             {
