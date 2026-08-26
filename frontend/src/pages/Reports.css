@@ -1,0 +1,247 @@
+.reports-page-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.report-screen-header {
+  padding: 24px 30px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(99, 102, 241, 0.15) 100%);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+}
+
+.header-info h1 {
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.header-info p {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.report-action-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.month-select-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--border-color);
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+}
+
+.report-month-input {
+  background: transparent;
+  border: none;
+  color: var(--text-main);
+  font-size: 13px;
+  outline: none;
+}
+
+/* Printable Sheet */
+.printable-report-sheet {
+  padding: 40px;
+  background: #1e293b;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.doc-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.doc-brand h2 {
+  font-size: 26px;
+  font-weight: 800;
+  color: #818cf8;
+}
+
+.doc-tagline {
+  font-size: 13px;
+  color: var(--text-muted);
+  display: block;
+  margin-top: 2px;
+}
+
+.doc-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: right;
+  font-size: 13px;
+}
+
+.doc-meta-item span {
+  color: var(--text-muted);
+  margin-right: 8px;
+}
+
+.doc-meta-item strong {
+  color: var(--text-main);
+}
+
+.doc-divider {
+  height: 1px;
+  background: var(--border-color);
+}
+
+.doc-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #818cf8;
+  border-left: 3px solid #6366f1;
+  padding-left: 10px;
+}
+
+.doc-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.summary-stat-box {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--border-color);
+  padding: 16px 20px;
+  border-radius: var(--radius-md);
+}
+
+.stat-name {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.stat-digit {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.stat-digit.income-color {
+  color: #34d399;
+}
+
+.stat-digit.expense-color {
+  color: #f87171;
+}
+
+.stat-digit.savings-color {
+  color: #a78bfa;
+}
+
+.cat-report-row {
+  margin-bottom: 12px;
+}
+
+.cat-row-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.cat-bar-track {
+  width: 100%;
+  height: 8px;
+  background: #334155;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.cat-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1 0%, #a855f7 100%);
+  border-radius: var(--radius-full);
+}
+
+.doc-table th {
+  background: rgba(15, 23, 42, 0.4);
+}
+
+.doc-footer {
+  text-align: center;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-color);
+  color: var(--text-sub);
+  font-size: 12px;
+}
+
+.doc-empty-text {
+  color: var(--text-sub);
+  font-size: 13px;
+}
+
+/* Print CSS */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  .no-print, .app-sidebar, .app-header {
+    display: none !important;
+  }
+
+  .app-main-wrapper {
+    margin-left: 0 !important;
+  }
+
+  .app-page-container {
+    margin-top: 0 !important;
+    padding: 0 !important;
+  }
+
+  .printable-report-sheet {
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+
+  .doc-meta-item strong, .summary-stat-box, .custom-table th, .custom-table td {
+    color: #000000 !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .doc-summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .doc-banner {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .doc-meta {
+    text-align: left;
+  }
+}

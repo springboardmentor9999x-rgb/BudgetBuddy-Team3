@@ -1,0 +1,26 @@
+.income-page-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.page-header-banner.income-theme {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(16, 185, 129, 0.1) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.stat-value.income-color {
+  color: #34d399;
+}
+
+.income-content-grid {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 992px) {
+  .income-content-grid {
+    grid-template-columns: 1fr;
+  }
+}

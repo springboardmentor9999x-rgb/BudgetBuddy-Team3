@@ -1,0 +1,307 @@
+import React, { useEffect, useState } from "react";
+import {
+  FileBarChart,
+  Download,
+  Printer,
+  Calendar,
+  DollarSign,
+  TrendingUp,
+  TrendingDown,
+  PieChart,
+  Filter
+} from "lucide-react";
+import API from "../services/api";
+import "./Reports.css";
+
+function Reports() {
+  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
+  const [reportData, setReportData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const fetchReport = async () => {
+    try {
+      setLoading(true);
+      setError("");
+      const res = await API.get(`/reports/summary?month=${month}`);
+      setReportData(res.data);
+    } catch (err) {
+      console.error("Report fetch error:", err);
+      setError(err.response?.data?.detail || "Failed to load financial report");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchReport();
+  }, [month]);
+
+  const handleExportCSV = async () => {
+    try {
+      const response = await API.get(`/reports/export/csv?month=${month}`, {
+        responseType: "blob",
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute(
+        "download",
+        `BudgetBuddy_Report_${month || "all_time"}.csv`
+      );
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      console.error("Export CSV error:", err);
+      alert("Failed to download CSV export.");
+    }
+  };
+
+  const handlePrintPDF = () => {
+    window.print();
+  };
+
+  const summary = reportData?.summary || {
+    total_income: 0,
+    total_expenses: 0,
+    net_savings: 0,
+    savings_rate: 0,
+    budget_amount: 0,
+    budget_utilization: 0,
+  };
+
+  const categories = reportData?.category_summary || [];
+  const expenses = reportData?.expenses || [];
+  const incomes = reportData?.incomes || [];
+  const accounts = reportData?.accounts || [];
+
+  return (
+    <div className="reports-page-container animate-fade-in">
+      {/* Printable Report Header */}
+      <div className="report-screen-header glass-card no-print">
+        <div className="header-info">
+          <h1>Financial Reports & Export 📈</h1>
+          <p>
+            Generate comprehensive financial statements for audits, personal records, and budget analysis
+          </p>
+        </div>
+
+        <div className="report-action-controls">
+          <div className="month-select-wrapper">
+            <Calendar size={14} />
+            <input
+              type="month"
+              value={month}
+              onChange={(e) => setMonth(e.target.value)}
+              className="report-month-input"
+            />
+          </div>
+
+          <button onClick={handleExportCSV} className="btn-secondary">
+            <Download size={15} /> Export CSV / Excel
+          </button>
+
+          <button onClick={handlePrintPDF} className="btn-primary">
+            <Printer size={15} /> Print / Save as PDF
+          </button>
+        </div>
+      </div>
+
+      {loading && !reportData ? (
+        <div className="table-loading">
+          <div className="spinner"></div>
+          <p>Generating financial report...</p>
+        </div>
+      ) : error ? (
+        <div className="alert-error">
+          <span>{error}</span>
+        </div>
+      ) : (
+        /* Printable Document Container */
+        <div className="printable-report-sheet glass-card">
+          {/* Official Document Banner */}
+          <div className="doc-banner">
+            <div className="doc-brand">
+              <h2>💰 BudgetBuddy</h2>
+              <span className="doc-tagline">
+                Personal Budget Planning & Expense Management Platform
+              </span>
+            </div>
+            <div className="doc-meta">
+              <div className="doc-meta-item">
+                <span>Statement Period:</span>
+                <strong>
+                  {month
+                    ? new Date(`${month}-01`).toLocaleDateString("en-IN", {
+                        month: "long",
+                        year: "numeric",
+                      })
+                    : "All Time"}
+                </strong>
+              </div>
+              <div className="doc-meta-item">
+                <span>Account Holder:</span>
+                <strong>{reportData?.user?.name || "Student User"}</strong>
+              </div>
+              <div className="doc-meta-item">
+                <span>Generated Date:</span>
+                <strong>{new Date().toLocaleDateString("en-IN")}</strong>
+              </div>
+            </div>
+          </div>
+
+          <div className="doc-divider" />
+
+          {/* Section 1: Financial Executive Summary */}
+          <div className="doc-section">
+            <h3 className="section-title">1. Executive Summary</h3>
+            <div className="doc-summary-grid">
+              <div className="summary-stat-box">
+                <span className="stat-name">Total Income</span>
+                <h4 className="stat-digit income-color">
+                  ₹{summary.total_income.toLocaleString("en-IN")}
+                </h4>
+              </div>
+              <div className="summary-stat-box">
+                <span className="stat-name">Total Expenses</span>
+                <h4 className="stat-digit expense-color">
+                  ₹{summary.total_expenses.toLocaleString("en-IN")}
+                </h4>
+              </div>
+              <div className="summary-stat-box">
+                <span className="stat-name">Net Savings</span>
+                <h4
+                  className={`stat-digit ${
+                    summary.net_savings >= 0 ? "savings-color" : "expense-color"
+                  }`}
+                >
+                  ₹{summary.net_savings.toLocaleString("en-IN")}
+                </h4>
+              </div>
+              <div className="summary-stat-box">
+                <span className="stat-name">Savings Rate</span>
+                <h4 className="stat-digit">{summary.savings_rate}%</h4>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2: Category Breakdown */}
+          <div className="doc-section">
+            <h3 className="section-title">2. Category-wise Spending Breakdown</h3>
+            {categories.length === 0 ? (
+              <p className="doc-empty-text">No category expenses recorded for this period.</p>
+            ) : (
+              <div className="category-bars-list">
+                {categories.map((c) => (
+                  <div key={c.category_name} className="cat-report-row">
+                    <div className="cat-row-info">
+                      <span className="cat-name">{c.category_name}</span>
+                      <strong className="cat-amount">
+                        ₹{c.amount.toLocaleString("en-IN")} ({c.percentage}%)
+                      </strong>
+                    </div>
+                    <div className="cat-bar-track">
+                      <div
+                        className="cat-bar-fill"
+                        style={{ width: `${c.percentage}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Section 3: Expense Log */}
+          <div className="doc-section">
+            <h3 className="section-title">3. Detailed Expense Itemization</h3>
+            {expenses.length === 0 ? (
+              <p className="doc-empty-text">No individual expense transactions recorded.</p>
+            ) : (
+              <div className="table-responsive">
+                <table className="custom-table doc-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Category</th>
+                      <th>Description</th>
+                      <th>Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {expenses.map((e) => (
+                      <tr key={e.expense_id}>
+                        <td>{e.expense_date}</td>
+                        <td>
+                          <span className="badge badge-category">
+                            {e.category_name}
+                          </span>
+                        </td>
+                        <td>{e.description || "-"}</td>
+                        <td>
+                          <span className="table-amount-expense">
+                            ₹{Number(e.amount).toLocaleString("en-IN")}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Section 4: Income Log */}
+          <div className="doc-section">
+            <h3 className="section-title">4. Income Sources Log</h3>
+            {incomes.length === 0 ? (
+              <p className="doc-empty-text">No income records registered for this period.</p>
+            ) : (
+              <div className="table-responsive">
+                <table className="custom-table doc-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Source</th>
+                      <th>Bank / Account</th>
+                      <th>Description</th>
+                      <th>Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {incomes.map((i) => (
+                      <tr key={i.income_id}>
+                        <td>{i.income_date}</td>
+                        <td>
+                          <span className="badge badge-income">{i.source}</span>
+                        </td>
+                        <td>{i.bank_name || "-"}</td>
+                        <td>{i.description || "-"}</td>
+                        <td>
+                          <span className="table-amount-income">
+                            + ₹{Number(i.amount).toLocaleString("en-IN")}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Document Footer */}
+          <div className="doc-footer">
+            <p>
+              BudgetBuddy Platform • Automated Student Financial Planning Report • End of Statement
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default Reports;
