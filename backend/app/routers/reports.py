@@ -79,6 +79,39 @@ def get_report_summary(
     ]
     category_summary.sort(key=lambda x: x["amount"], reverse=True)
 
+    # 5. Combined Complete Transaction History
+    combined_transactions = []
+    for inc in incomes:
+        combined_transactions.append({
+            "transaction_id": f"inc-{inc.income_id}",
+            "date": str(inc.income_date),
+            "type": "Income",
+            "category_or_source": inc.source or "Income",
+            "bank_or_account": inc.bank_name or "-",
+            "description": inc.description or "-",
+            "amount": float(inc.amount),
+            "formatted_amount": f"+ ₹{float(inc.amount):,.2f}",
+            "raw_date": inc.income_date,
+            "raw_id": inc.income_id
+        })
+    for exp in expenses:
+        cname = cat_map.get(exp.category_id, f"Category {exp.category_id}")
+        combined_transactions.append({
+            "transaction_id": f"exp-{exp.expense_id}",
+            "date": str(exp.expense_date),
+            "type": "Expense",
+            "category_or_source": cname,
+            "bank_or_account": "-",
+            "description": exp.description or "-",
+            "amount": float(exp.amount),
+            "formatted_amount": f"- ₹{float(exp.amount):,.2f}",
+            "raw_date": exp.expense_date,
+            "raw_id": exp.expense_id
+        })
+
+    # Sort newest transactions first (chronological descending)
+    combined_transactions.sort(key=lambda t: (t["raw_date"], t["raw_id"]), reverse=True)
+
     # Budget info
     budgets = db.query(Budget).filter(Budget.user_id == user_id).all()
     selected_budget = None
@@ -133,6 +166,19 @@ def get_report_summary(
                 "expense_date": str(e.expense_date)
             }
             for e in expenses
+        ],
+        "transactions": [
+            {
+                "id": t["transaction_id"],
+                "date": t["date"],
+                "type": t["type"],
+                "categoryOrSource": t["category_or_source"],
+                "bankOrAccount": t["bank_or_account"],
+                "description": t["description"],
+                "amount": t["amount"],
+                "formatted_amount": t["formatted_amount"]
+            }
+            for t in combined_transactions
         ]
     }
 
@@ -164,10 +210,38 @@ def export_csv(
         except Exception:
             pass
 
-    incomes = income_query.order_by(Income.income_date.desc()).all()
-    expenses = expense_query.order_by(Expense.expense_date.desc()).all()
+    incomes = income_query.order_by(Income.income_date.desc(), Income.income_id.desc()).all()
+    expenses = expense_query.order_by(Expense.expense_date.desc(), Expense.expense_id.desc()).all()
     categories = db.query(Category).filter(Category.user_id == user_id).all()
     cat_map = {c.category_id: c.name for c in categories}
+
+    # Combined Complete Transaction History
+    combined_transactions = []
+    for inc in incomes:
+        combined_transactions.append({
+            "date": str(inc.income_date),
+            "type": "Income",
+            "category_or_source": inc.source or "Income",
+            "bank_or_account": inc.bank_name or "-",
+            "description": inc.description or "-",
+            "amount": f"+{float(inc.amount):.2f}",
+            "raw_date": inc.income_date,
+            "raw_id": inc.income_id
+        })
+    for exp in expenses:
+        cname = cat_map.get(exp.category_id, f"Category {exp.category_id}")
+        combined_transactions.append({
+            "date": str(exp.expense_date),
+            "type": "Expense",
+            "category_or_source": cname,
+            "bank_or_account": "-",
+            "description": exp.description or "-",
+            "amount": f"-{float(exp.amount):.2f}",
+            "raw_date": exp.expense_date,
+            "raw_id": exp.expense_id
+        })
+
+    combined_transactions.sort(key=lambda t: (t["raw_date"], t["raw_id"]), reverse=True)
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -178,14 +252,14 @@ def export_csv(
     writer.writerow(["Generated Date", str(date.today()), "Period", month if month else "All Time"])
     writer.writerow([])
 
-    # Income section
+    # 1. Income section
     writer.writerow(["--- INCOME RECORDS ---"])
     writer.writerow(["Date", "Source", "Bank", "Amount (INR)", "Description"])
     for inc in incomes:
         writer.writerow([inc.income_date, inc.source, inc.bank_name or "-", f"{float(inc.amount):.2f}", inc.description or "-"])
 
     writer.writerow([])
-    # Expense section
+    # 2. Expense section
     writer.writerow(["--- EXPENSE RECORDS ---"])
     writer.writerow(["Date", "Category", "Amount (INR)", "Description"])
     for exp in expenses:
@@ -193,7 +267,24 @@ def export_csv(
         writer.writerow([exp.expense_date, cname, f"{float(exp.amount):.2f}", exp.description or "-"])
 
     writer.writerow([])
-    # Financial summary
+    # 3. Complete Transaction History section
+    writer.writerow(["--- COMPLETE TRANSACTION HISTORY ---"])
+    writer.writerow(["Date", "Transaction Type", "Category/Source", "Bank/Account", "Description", "Amount (INR)"])
+    if combined_transactions:
+        for t in combined_transactions:
+            writer.writerow([
+                t["date"],
+                t["type"],
+                t["category_or_source"],
+                t["bank_or_account"],
+                t["description"],
+                t["amount"]
+            ])
+    else:
+        writer.writerow(["No transactions available for this statement period."])
+
+    writer.writerow([])
+    # 4. Financial summary
     tot_inc = sum(float(i.amount) for i in incomes)
     tot_exp = sum(float(e.amount) for e in expenses)
     writer.writerow(["--- FINANCIAL SUMMARY ---"])

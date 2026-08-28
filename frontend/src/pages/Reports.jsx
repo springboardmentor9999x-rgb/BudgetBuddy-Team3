@@ -77,6 +77,35 @@ function Reports() {
   const incomes = reportData?.incomes || [];
   const accounts = reportData?.accounts || [];
 
+  // Combine Income and Expense records into chronological transaction history (newest first)
+  const transactions =
+    reportData?.transactions && Array.isArray(reportData.transactions)
+      ? reportData.transactions
+      : [
+          ...expenses.map((e) => ({
+            id: `exp-${e.expense_id}`,
+            date: String(e.expense_date),
+            type: "Expense",
+            categoryOrSource: e.category_name || "General",
+            bankOrAccount: "-",
+            description: e.description ? String(e.description).trim() || "-" : "-",
+            amount: Number(e.amount || 0),
+          })),
+          ...incomes.map((i) => ({
+            id: `inc-${i.income_id}`,
+            date: String(i.income_date),
+            type: "Income",
+            categoryOrSource: i.source ? String(i.source).trim() || "Income" : "Income",
+            bankOrAccount: i.bank_name ? String(i.bank_name).trim() || "-" : "-",
+            description: i.description ? String(i.description).trim() || "-" : "-",
+            amount: Number(i.amount || 0),
+          })),
+        ].sort((a, b) => {
+          const diff = String(b.date).localeCompare(String(a.date));
+          if (diff !== 0) return diff;
+          return a.type.localeCompare(b.type);
+        });
+
   return (
     <div className="reports-page-container animate-fade-in">
       {/* Printable Report Header */}
@@ -282,6 +311,71 @@ function Reports() {
                         <td>
                           <span className="table-amount-income">
                             + ₹{Number(i.amount).toLocaleString("en-IN")}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Section 5: Complete Transaction History */}
+          <div className="doc-section">
+            <h3 className="section-title">5. Complete Transaction History</h3>
+            {transactions.length === 0 ? (
+              <p className="doc-empty-text">No transactions available for this statement period.</p>
+            ) : (
+              <div className="table-responsive">
+                <table className="custom-table doc-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Transaction Type</th>
+                      <th>Category / Source</th>
+                      <th>Bank / Account</th>
+                      <th>Description</th>
+                      <th>Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {transactions.map((t) => (
+                      <tr key={t.id}>
+                        <td>{t.date}</td>
+                        <td>
+                          <span
+                            className={`badge ${
+                              t.type === "Income" ? "badge-income" : "badge-expense"
+                            }`}
+                          >
+                            {t.type}
+                          </span>
+                        </td>
+                        <td>
+                          <span
+                            className={`badge ${
+                              t.type === "Income" ? "badge-income" : "badge-category"
+                            }`}
+                          >
+                            {t.categoryOrSource}
+                          </span>
+                        </td>
+                        <td>{t.bankOrAccount}</td>
+                        <td>{t.description}</td>
+                        <td>
+                          <span
+                            className={
+                              t.type === "Income"
+                                ? "table-amount-income"
+                                : "table-amount-expense"
+                            }
+                          >
+                            {t.type === "Income" ? "+ " : "- "}₹
+                            {Number(t.amount || 0).toLocaleString("en-IN", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
                           </span>
                         </td>
                       </tr>

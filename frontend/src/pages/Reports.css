@@ -200,9 +200,16 @@
 
 /* Print CSS */
 @media print {
+  @page {
+    margin: 12mm 10mm;
+    size: auto;
+  }
+
   body {
     background: #ffffff !important;
     color: #000000 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   .no-print, .app-sidebar, .app-header {
@@ -211,11 +218,18 @@
 
   .app-main-wrapper {
     margin-left: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
   }
 
   .app-page-container {
     margin-top: 0 !important;
     padding: 0 !important;
+    width: 100% !important;
+  }
+
+  .reports-page-container {
+    gap: 0 !important;
   }
 
   .printable-report-sheet {
@@ -224,10 +238,141 @@
     border: none !important;
     box-shadow: none !important;
     padding: 0 !important;
+    gap: 24px !important;
+    width: 100% !important;
   }
 
-  .doc-meta-item strong, .summary-stat-box, .custom-table th, .custom-table td {
+  .doc-section {
+    page-break-inside: auto;
+    break-inside: auto;
+    margin-bottom: 24px;
+  }
+
+  .section-title {
+    page-break-after: avoid;
+    break-after: avoid;
+    color: #3730a3 !important;
+    border-left: 3px solid #4f46e5 !important;
+  }
+
+  .doc-summary-grid {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .summary-stat-box {
+    background: #f8fafc !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+  }
+
+  .stat-name {
+    color: #475569 !important;
+  }
+
+  .stat-digit {
+    color: #0f172a !important;
+  }
+
+  .stat-digit.income-color {
+    color: #059669 !important;
+  }
+
+  .stat-digit.expense-color {
+    color: #dc2626 !important;
+  }
+
+  .stat-digit.savings-color {
+    color: #7c3aed !important;
+  }
+
+  .table-responsive {
+    overflow: visible !important;
+  }
+
+  .doc-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .doc-table thead {
+    display: table-header-group !important;
+  }
+
+  .doc-table tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .doc-table th {
+    background: #f1f5f9 !important;
+    color: #1e293b !important;
+    border-bottom: 2px solid #cbd5e1 !important;
+    padding: 6px 8px !important;
+    font-size: 11px !important;
+    text-align: left !important;
+  }
+
+  .doc-table td {
+    color: #1e293b !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    padding: 6px 8px !important;
+    font-size: 11px !important;
+    word-break: break-word !important;
+  }
+
+  .badge {
+    border: 1px solid #cbd5e1 !important;
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+
+  .badge-income {
+    background: #dcfce7 !important;
+    color: #166534 !important;
+    border-color: #86efac !important;
+  }
+
+  .badge-expense {
+    background: #fee2e2 !important;
+    color: #991b1b !important;
+    border-color: #fca5a5 !important;
+  }
+
+  .badge-category {
+    background: #e0e7ff !important;
+    color: #3730a3 !important;
+    border-color: #a5b4fc !important;
+  }
+
+  .table-amount-income {
+    color: #059669 !important;
+    font-weight: 700 !important;
+  }
+
+  .table-amount-expense {
+    color: #dc2626 !important;
+    font-weight: 700 !important;
+  }
+
+  .doc-meta-item strong {
     color: #000000 !important;
+  }
+
+  .doc-meta-item span {
+    color: #475569 !important;
+  }
+
+  .doc-divider {
+    background: #cbd5e1 !important;
+  }
+
+  .doc-footer {
+    page-break-before: auto;
+    border-top: 1px solid #cbd5e1 !important;
+    color: #64748b !important;
+    margin-top: 24px;
+    padding-top: 16px;
   }
 }
 
