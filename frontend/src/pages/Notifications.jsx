@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Bell,
   CheckCheck,
@@ -6,12 +7,14 @@ import {
   Filter,
   CheckCircle2,
   AlertCircle,
-  Inbox
+  Inbox,
+  ExternalLink
 } from "lucide-react";
 import API, { onDataChanged, notifyDataChanged } from "../services/api";
 import "./Notifications.css";
 
 function Notifications() {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [filter, setFilter] = useState("all"); // 'all' | 'unread'
@@ -106,6 +109,17 @@ function Notifications() {
       ? notifications.filter((n) => !n.is_read)
       : notifications;
 
+  const handleCardClick = (notif) => {
+    if (!notif.is_read) {
+      handleMarkAsRead(notif.notification_id);
+    }
+    if (notif.action_url) {
+      navigate(notif.action_url);
+    } else if (notif.title?.includes("Premium Upgrade Request")) {
+      navigate("/admin/users");
+    }
+  };
+
   return (
     <div className="notifications-page-container animate-fade-in">
       {/* Page Header */}
@@ -183,9 +197,8 @@ function Notifications() {
                 className={`notif-card-item ${
                   notif.is_read ? "read" : "unread"
                 }`}
-                onClick={() =>
-                  !notif.is_read && handleMarkAsRead(notif.notification_id)
-                }
+                onClick={() => handleCardClick(notif)}
+                style={{ cursor: notif.action_url || notif.title?.includes("Premium") ? "pointer" : "default" }}
               >
                 <div className="notif-left-col">
                   <div className="notif-status-dot" />

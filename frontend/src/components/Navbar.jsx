@@ -5,21 +5,32 @@ import {
   CheckCheck,
   Menu,
   User,
-  PlusCircle,
   TrendingDown,
   TrendingUp,
-  X
+  Shield,
+  Star
 } from "lucide-react";
 import API, { onDataChanged } from "../services/api";
+import { useRole } from "../context/RoleContext";
 import "./Navbar.css";
 
 function Navbar({ onToggleSidebar }) {
   const navigate = useNavigate();
+  const { role, isAdmin, isPremiumOrAdmin, userName, loading: roleLoading } = useRole();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showDropdown, setShowDropdown] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
   const dropdownRef = useRef(null);
+
+  // Role badge config
+  const getRoleBadge = () => {
+    if (isAdmin) return { label: "Admin", color: "#f87171", icon: Shield };
+    if (isPremiumOrAdmin) return { label: "Premium", color: "#fbbf24", icon: Star };
+    return { label: "Student", color: "#a5b4fc", icon: null };
+  };
+  const roleBadge = getRoleBadge();
+  const RoleIcon = roleBadge.icon;
 
   // Fetch notifications and unread count
   const loadNotifications = async () => {
@@ -96,6 +107,20 @@ function Navbar({ onToggleSidebar }) {
       setUnreadCount(0);
     } catch (err) {
       console.error("Mark all read error:", err);
+    }
+  };
+
+  // Handle notification click with redirection
+  const handleNotificationClick = async (notif, e) => {
+    if (e) e.stopPropagation();
+    if (!notif.is_read) {
+      handleMarkAsRead(notif.notification_id);
+    }
+    setShowDropdown(false);
+    if (notif.action_url) {
+      navigate(notif.action_url);
+    } else if (notif.title?.includes("Premium Upgrade Request")) {
+      navigate("/admin/users");
     }
   };
 
@@ -178,7 +203,8 @@ function Navbar({ onToggleSidebar }) {
                     <div
                       key={notif.notification_id}
                       className={`dropdown-item ${notif.is_read ? "read" : "unread"}`}
-                      onClick={(e) => !notif.is_read && handleMarkAsRead(notif.notification_id, e)}
+                      onClick={(e) => handleNotificationClick(notif, e)}
+                      style={{ cursor: "pointer" }}
                     >
                       <div className="item-indicator" />
                       <div className="item-content">
@@ -217,8 +243,11 @@ function Navbar({ onToggleSidebar }) {
             <User size={16} />
           </div>
           <div className="profile-info-text">
-            <span className="user-name">{userProfile?.name || "Student User"}</span>
-            <span className="user-role">Student</span>
+            <span className="user-name">{userProfile?.name || userName || "Student User"}</span>
+            <span className="user-role" style={{ color: roleBadge.color }}>
+              {RoleIcon && <RoleIcon size={11} />}
+              {roleBadge.label}
+            </span>
           </div>
         </Link>
       </div>

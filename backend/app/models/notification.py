@@ -35,6 +35,12 @@ class Notification(Base):
         nullable=False
     )
 
+    action_url = Column(
+        String(255),
+        nullable=True,
+        default=None
+    )
+
     created_at = Column(
         DateTime,
         default=datetime.utcnow,

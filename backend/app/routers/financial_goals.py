@@ -4,6 +4,7 @@ from decimal import Decimal
 
 from app.database import get_db
 from app.models.financial_goal import FinancialGoal
+from app.models.goal_contribution import GoalContribution
 from app.models.notification import Notification
 from app.models.user import User
 from app.routers.auth import get_current_user
@@ -18,6 +19,51 @@ router = APIRouter(
     prefix="/goals",
     tags=["Savings Goals"]
 )
+
+
+def _format_currency(val) -> str:
+    """Format numbers into clean currency representation (e.g., 5000 -> 5,000)."""
+    v = float(val)
+    if v.is_integer():
+        return f"{int(v):,}"
+    return f"{v:,.2f}"
+
+
+def _safe_create_notification(
+    db: Session,
+    user_id: int,
+    title: str,
+    message: str,
+    action_url: str = "/savings-goals"
+):
+    """
+    Safely create notification inside nested savepoint.
+    If notification creation fails for any reason, the main savings goal
+    operation remains unaffected.
+    """
+    try:
+        with db.begin_nested():
+            notification = Notification(
+                user_id=user_id,
+                title=title,
+                message=message,
+                action_url=action_url,
+                is_read=False
+            )
+            db.add(notification)
+            db.flush()
+    except Exception as e:
+        print(f"Warning: Failed to create notification '{title}': {e}")
+
+
+def _has_achievement_notification(db: Session, user_id: int, goal_name: str) -> bool:
+    """Check if an achievement notification was already created for this goal."""
+    existing = db.query(Notification).filter(
+        Notification.user_id == user_id,
+        Notification.title == "Savings Goal Achieved 🎉",
+        Notification.message == f"Congratulations! Your savings goal '{goal_name}' has been achieved."
+    ).first()
+    return existing is not None
 
 
 def _format_goal_response(goal: FinancialGoal) -> dict:
@@ -71,15 +117,33 @@ def create_goal(
     )
 
     db.add(new_goal)
+    db.flush()
 
-    # Add notification for new savings goal
-    notification = Notification(
-        user_id=current_user.user_id,
-        title="🎯 New Savings Goal Created",
-        message=f"Target: ₹{goal_in.target_amount:,.2f} for '{goal_in.goal_name}'. Start saving now!",
-        is_read=False
-    )
-    db.add(notification)
+    # Notifications (failures must never break goal operation)
+    try:
+        # 1. Notification: New Savings Goal Created
+        _safe_create_notification(
+            db=db,
+            user_id=current_user.user_id,
+            title="New Savings Goal Created",
+            message=f"Your savings goal '{new_goal.goal_name}' has been created successfully.",
+            action_url="/savings-goals"
+        )
+
+        # 2. Notification: Savings Goal Achieved (if initial amount already reaches target)
+        target = float(new_goal.target_amount) if new_goal.target_amount else 0.0
+        current = float(new_goal.current_amount) if new_goal.current_amount else 0.0
+        if target > 0 and current >= target:
+            if not _has_achievement_notification(db, current_user.user_id, new_goal.goal_name):
+                _safe_create_notification(
+                    db=db,
+                    user_id=current_user.user_id,
+                    title="Savings Goal Achieved 🎉",
+                    message=f"Congratulations! Your savings goal '{new_goal.goal_name}' has been achieved.",
+                    action_url="/savings-goals"
+                )
+    except Exception as e:
+        print(f"Warning: Notification failed during goal creation: {e}")
 
     db.commit()
     db.refresh(new_goal)
@@ -131,6 +195,10 @@ def update_goal(
             detail="Savings goal not found"
         )
 
+    previous_target = float(goal.target_amount) if goal.target_amount else 0.0
+    previous_current = float(goal.current_amount) if goal.current_amount else 0.0
+    was_achieved = previous_target > 0 and previous_current >= previous_target
+
     if goal_update.goal_name is not None:
         goal.goal_name = goal_update.goal_name.strip()
     if goal_update.target_amount is not None:
@@ -139,6 +207,36 @@ def update_goal(
         goal.current_amount = Decimal(str(goal_update.current_amount))
     if goal_update.deadline is not None:
         goal.deadline = goal_update.deadline
+
+    db.flush()
+
+    # Notifications (failures must never break goal operation)
+    try:
+        # 1. Notification: Savings Goal Updated
+        _safe_create_notification(
+            db=db,
+            user_id=current_user.user_id,
+            title="Savings Goal Updated",
+            message=f"Your savings goal '{goal.goal_name}' has been updated successfully.",
+            action_url="/savings-goals"
+        )
+
+        # 2. Notification: Savings Goal Achieved (if transitioned to achieved state)
+        new_target = float(goal.target_amount) if goal.target_amount else 0.0
+        new_current = float(goal.current_amount) if goal.current_amount else 0.0
+        is_achieved_now = new_target > 0 and new_current >= new_target
+
+        if is_achieved_now and not was_achieved:
+            if not _has_achievement_notification(db, current_user.user_id, goal.goal_name):
+                _safe_create_notification(
+                    db=db,
+                    user_id=current_user.user_id,
+                    title="Savings Goal Achieved 🎉",
+                    message=f"Congratulations! Your savings goal '{goal.goal_name}' has been achieved.",
+                    action_url="/savings-goals"
+                )
+    except Exception as e:
+        print(f"Warning: Notification failed during goal update: {e}")
 
     db.commit()
     db.refresh(goal)
@@ -174,28 +272,42 @@ def deposit_to_goal(
         )
 
     previous_amount = float(goal.current_amount or 0.0)
+    target = float(goal.target_amount) if goal.target_amount else 0.0
     new_total = previous_amount + float(deposit.amount)
     goal.current_amount = Decimal(str(new_total))
 
-    target = float(goal.target_amount)
+    # Record deposit contribution for analytics/history
+    contrib = GoalContribution(
+        goal_id=goal.goal_id,
+        user_id=current_user.user_id,
+        amount=deposit.amount
+    )
+    db.add(contrib)
+    db.flush()
 
-    # If goal reached or exceeded target, trigger completion notification
-    if new_total >= target and previous_amount < target:
-        notification = Notification(
+    # Notifications (failures must never break goal operation)
+    try:
+        # 1. Notification: Money Added to Savings Goal
+        _safe_create_notification(
+            db=db,
             user_id=current_user.user_id,
-            title="🎉 Goal Completed!",
-            message=f"Congratulations! You reached your savings goal '{goal.goal_name}' with ₹{new_total:,.2f}!",
-            is_read=False
+            title="Money Added to Savings Goal",
+            message=f"₹{_format_currency(deposit.amount)} has been added to your savings goal '{goal.goal_name}'.",
+            action_url="/savings-goals"
         )
-        db.add(notification)
-    else:
-        notification = Notification(
-            user_id=current_user.user_id,
-            title="💰 Savings Added",
-            message=f"Added ₹{deposit.amount:,.2f} to '{goal.goal_name}'. Current total: ₹{new_total:,.2f} ({min(round(new_total/target*100), 100)}%).",
-            is_read=False
-        )
-        db.add(notification)
+
+        # 2. Notification: Savings Goal Achieved (only when new_total >= target and previous_amount < target)
+        if target > 0 and new_total >= target and previous_amount < target:
+            if not _has_achievement_notification(db, current_user.user_id, goal.goal_name):
+                _safe_create_notification(
+                    db=db,
+                    user_id=current_user.user_id,
+                    title="Savings Goal Achieved 🎉",
+                    message=f"Congratulations! Your savings goal '{goal.goal_name}' has been achieved.",
+                    action_url="/savings-goals"
+                )
+    except Exception as e:
+        print(f"Warning: Notification failed during goal deposit: {e}")
 
     db.commit()
     db.refresh(goal)

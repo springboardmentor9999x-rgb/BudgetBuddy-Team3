@@ -63,11 +63,12 @@ def register_user(
         user.password
     )
 
-    # Create new user
+    # Create new user (default role = USER)
     new_user = User(
         name=user.name,
         email=user.email,
-        password=hashed_password
+        password=hashed_password,
+        role="USER"
     )
 
     # Save user to database
@@ -79,7 +80,8 @@ def register_user(
         "message": "User registered successfully",
         "user_id": new_user.user_id,
         "name": new_user.name,
-        "email": new_user.email
+        "email": new_user.email,
+        "role": new_user.role
     }
 
 
@@ -118,17 +120,19 @@ def login_user(
             detail="Invalid email or password"
         )
 
-    # Create JWT token
+    # Create JWT token (includes role for frontend role-based UI)
     access_token = create_access_token(
         data={
             "sub": str(existing_user.user_id),
-            "email": existing_user.email
+            "email": existing_user.email,
+            "role": existing_user.role
         }
     )
 
     return {
         "access_token": access_token,
-        "token_type": "bearer"
+        "token_type": "bearer",
+        "role": existing_user.role
     }
 
 
@@ -182,6 +186,40 @@ def get_current_user(
 
 
 # ==========================================
+# ROLE-BASED DEPENDENCY FUNCTIONS
+# ==========================================
+
+def require_premium_or_admin(
+    current_user: User = Depends(get_current_user)
+) -> User:
+    """
+    Dependency: only PREMIUM_USER or ADMIN can pass.
+    Raises 403 for regular USER role.
+    """
+    if current_user.role not in ("PREMIUM_USER", "ADMIN"):
+        raise HTTPException(
+            status_code=403,
+            detail="This feature requires a Premium or Admin account. Upgrade to Premium to access advanced analytics."
+        )
+    return current_user
+
+
+def require_admin(
+    current_user: User = Depends(get_current_user)
+) -> User:
+    """
+    Dependency: only ADMIN can pass.
+    Raises 403 for USER and PREMIUM_USER roles.
+    """
+    if current_user.role != "ADMIN":
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied. Admin privileges required."
+        )
+    return current_user
+
+
+# ==========================================
 # GET MY PROFILE
 # ==========================================
 
@@ -193,5 +231,6 @@ def get_my_profile(
     return {
         "user_id": current_user.user_id,
         "name": current_user.name,
-        "email": current_user.email
-    }
+        "email": current_user.email,
+        "role": current_user.role
+    }

@@ -64,3 +64,9 @@ Thumbs.db
 *.ntvs*
 *.njsproj
 *.sln
+
+# Test artifacts — isolated test DB and pytest cache
+backend/budget_buddy_test.db
+backend/.pytest_cache/
+.pytest_cache/
+backend/cleanup_backup.json

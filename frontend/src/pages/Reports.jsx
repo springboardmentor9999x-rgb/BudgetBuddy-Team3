@@ -43,19 +43,25 @@ function Reports() {
         responseType: "blob",
       });
 
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      // Backend now returns a proper .xlsx file
+      const url = window.URL.createObjectURL(
+        new Blob([response.data], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        })
+      );
       const link = document.createElement("a");
       link.href = url;
       link.setAttribute(
         "download",
-        `BudgetBuddy_Report_${month || "all_time"}.csv`
+        `BudgetBuddy_Report_${month || "All_Time"}.xlsx`
       );
       document.body.appendChild(link);
       link.click();
       link.remove();
+      window.URL.revokeObjectURL(url);
     } catch (err) {
-      console.error("Export CSV error:", err);
-      alert("Failed to download CSV export.");
+      console.error("Export Excel error:", err);
+      alert("Failed to download Excel export. Please try again.");
     }
   };
 
@@ -111,7 +117,7 @@ function Reports() {
       {/* Printable Report Header */}
       <div className="report-screen-header glass-card no-print">
         <div className="header-info">
-          <h1>Financial Reports & Export 📈</h1>
+          <h1>Financial Reports &amp; Export 📈</h1>
           <p>
             Generate comprehensive financial statements for audits, personal records, and budget analysis
           </p>
@@ -155,7 +161,7 @@ function Reports() {
             <div className="doc-brand">
               <h2>💰 BudgetBuddy</h2>
               <span className="doc-tagline">
-                Personal Budget Planning & Expense Management Platform
+                Personal Budget Planning &amp; Expense Management Platform
               </span>
             </div>
             <div className="doc-meta">
@@ -250,7 +256,13 @@ function Reports() {
               <p className="doc-empty-text">No individual expense transactions recorded.</p>
             ) : (
               <div className="table-responsive">
-                <table className="custom-table doc-table">
+                <table className="custom-table doc-table doc-table-expense">
+                  <colgroup>
+                    <col className="col-date" />
+                    <col className="col-cat" />
+                    <col className="col-desc" />
+                    <col className="col-amount" />
+                  </colgroup>
                   <thead>
                     <tr>
                       <th>Date</th>
@@ -262,14 +274,14 @@ function Reports() {
                   <tbody>
                     {expenses.map((e) => (
                       <tr key={e.expense_id}>
-                        <td>{e.expense_date}</td>
+                        <td className="col-date">{e.expense_date}</td>
                         <td>
                           <span className="badge badge-category">
                             {e.category_name}
                           </span>
                         </td>
                         <td>{e.description || "-"}</td>
-                        <td>
+                        <td className="col-amount">
                           <span className="table-amount-expense">
                             ₹{Number(e.amount).toLocaleString("en-IN")}
                           </span>
@@ -289,7 +301,14 @@ function Reports() {
               <p className="doc-empty-text">No income records registered for this period.</p>
             ) : (
               <div className="table-responsive">
-                <table className="custom-table doc-table">
+                <table className="custom-table doc-table doc-table-income">
+                  <colgroup>
+                    <col className="col-date" />
+                    <col className="col-source" />
+                    <col className="col-bank" />
+                    <col className="col-desc" />
+                    <col className="col-amount" />
+                  </colgroup>
                   <thead>
                     <tr>
                       <th>Date</th>
@@ -302,13 +321,13 @@ function Reports() {
                   <tbody>
                     {incomes.map((i) => (
                       <tr key={i.income_id}>
-                        <td>{i.income_date}</td>
+                        <td className="col-date">{i.income_date}</td>
                         <td>
                           <span className="badge badge-income">{i.source}</span>
                         </td>
                         <td>{i.bank_name || "-"}</td>
                         <td>{i.description || "-"}</td>
-                        <td>
+                        <td className="col-amount">
                           <span className="table-amount-income">
                             + ₹{Number(i.amount).toLocaleString("en-IN")}
                           </span>
@@ -321,14 +340,22 @@ function Reports() {
             )}
           </div>
 
-          {/* Section 5: Complete Transaction History */}
-          <div className="doc-section">
+          {/* Section 5: Complete Transaction History — starts on a fresh page in print */}
+          <div className="doc-section doc-section-history">
             <h3 className="section-title">5. Complete Transaction History</h3>
             {transactions.length === 0 ? (
               <p className="doc-empty-text">No transactions available for this statement period.</p>
             ) : (
               <div className="table-responsive">
-                <table className="custom-table doc-table">
+                <table className="custom-table doc-table doc-table-history">
+                  <colgroup>
+                    <col className="col-date" />
+                    <col className="col-type" />
+                    <col className="col-cat" />
+                    <col className="col-bank" />
+                    <col className="col-desc" />
+                    <col className="col-amount" />
+                  </colgroup>
                   <thead>
                     <tr>
                       <th>Date</th>
@@ -342,7 +369,7 @@ function Reports() {
                   <tbody>
                     {transactions.map((t) => (
                       <tr key={t.id}>
-                        <td>{t.date}</td>
+                        <td className="col-date">{t.date}</td>
                         <td>
                           <span
                             className={`badge ${
@@ -363,7 +390,7 @@ function Reports() {
                         </td>
                         <td>{t.bankOrAccount}</td>
                         <td>{t.description}</td>
-                        <td>
+                        <td className="col-amount">
                           <span
                             className={
                               t.type === "Income"

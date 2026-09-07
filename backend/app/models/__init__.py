@@ -6,6 +6,8 @@ from .budget import Budget
 from .account import Account
 from .notification import Notification
 from .financial_goal import FinancialGoal
+from .goal_contribution import GoalContribution
+from .premium_request import PremiumRequest
 
 __all__ = [
     "User",
@@ -15,5 +17,7 @@ __all__ = [
     "Budget",
     "Account",
     "Notification",
-    "FinancialGoal"
+    "FinancialGoal",
+    "GoalContribution",
+    "PremiumRequest"
 ]

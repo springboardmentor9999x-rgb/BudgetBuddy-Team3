@@ -31,6 +31,18 @@ class User(Base):
     )
 
     # ==========================================
+    # ROLE-BASED ACCESS CONTROL
+    # Values: USER | PREMIUM_USER | ADMIN
+    # ==========================================
+
+    role = Column(
+        String(20),
+        nullable=False,
+        default="USER",
+        server_default="USER"
+    )
+
+    # ==========================================
     # USER ACCOUNTS
     # ==========================================
 

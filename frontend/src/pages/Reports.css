@@ -198,21 +198,33 @@
   font-size: 13px;
 }
 
-/* Print CSS */
+/* ============================================================
+   PRINT / PDF STYLES
+   ============================================================ */
 @media print {
   @page {
-    margin: 12mm 10mm;
-    size: auto;
+    margin: 10mm 8mm;
+    size: A4 portrait;
   }
 
+  /* --- Reset page chrome --- */
   body {
     background: #ffffff !important;
     color: #000000 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+    font-size: 11px !important;
   }
 
-  .no-print, .app-sidebar, .app-header {
+  /* Hide all navigation, buttons, filters */
+  .no-print,
+  .app-sidebar,
+  .app-header,
+  .report-screen-header,
+  .report-action-controls,
+  .month-select-wrapper,
+  button,
+  nav {
     display: none !important;
   }
 
@@ -238,121 +250,22 @@
     border: none !important;
     box-shadow: none !important;
     padding: 0 !important;
-    gap: 24px !important;
+    gap: 20px !important;
     width: 100% !important;
   }
 
-  .doc-section {
-    page-break-inside: auto;
-    break-inside: auto;
-    margin-bottom: 24px;
-  }
-
-  .section-title {
-    page-break-after: avoid;
-    break-after: avoid;
+  /* --- Banner --- */
+  .doc-brand h2 {
     color: #3730a3 !important;
-    border-left: 3px solid #4f46e5 !important;
+    font-size: 22px !important;
   }
 
-  .doc-summary-grid {
-    page-break-inside: avoid;
-    break-inside: avoid;
-  }
-
-  .summary-stat-box {
-    background: #f8fafc !important;
-    border: 1px solid #cbd5e1 !important;
-    color: #0f172a !important;
-  }
-
-  .stat-name {
+  .doc-tagline {
     color: #475569 !important;
   }
 
-  .stat-digit {
-    color: #0f172a !important;
-  }
-
-  .stat-digit.income-color {
-    color: #059669 !important;
-  }
-
-  .stat-digit.expense-color {
-    color: #dc2626 !important;
-  }
-
-  .stat-digit.savings-color {
-    color: #7c3aed !important;
-  }
-
-  .table-responsive {
-    overflow: visible !important;
-  }
-
-  .doc-table {
-    width: 100% !important;
-    border-collapse: collapse !important;
-  }
-
-  .doc-table thead {
-    display: table-header-group !important;
-  }
-
-  .doc-table tr {
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
-  }
-
-  .doc-table th {
-    background: #f1f5f9 !important;
-    color: #1e293b !important;
-    border-bottom: 2px solid #cbd5e1 !important;
-    padding: 6px 8px !important;
+  .doc-meta {
     font-size: 11px !important;
-    text-align: left !important;
-  }
-
-  .doc-table td {
-    color: #1e293b !important;
-    border-bottom: 1px solid #e2e8f0 !important;
-    padding: 6px 8px !important;
-    font-size: 11px !important;
-    word-break: break-word !important;
-  }
-
-  .badge {
-    border: 1px solid #cbd5e1 !important;
-    print-color-adjust: exact !important;
-    -webkit-print-color-adjust: exact !important;
-  }
-
-  .badge-income {
-    background: #dcfce7 !important;
-    color: #166534 !important;
-    border-color: #86efac !important;
-  }
-
-  .badge-expense {
-    background: #fee2e2 !important;
-    color: #991b1b !important;
-    border-color: #fca5a5 !important;
-  }
-
-  .badge-category {
-    background: #e0e7ff !important;
-    color: #3730a3 !important;
-    border-color: #a5b4fc !important;
-  }
-
-  .table-amount-income {
-    color: #059669 !important;
-    font-weight: 700 !important;
-  }
-
-  .table-amount-expense {
-    color: #dc2626 !important;
-    font-weight: 700 !important;
   }
 
   .doc-meta-item strong {
@@ -367,15 +280,187 @@
     background: #cbd5e1 !important;
   }
 
+  /* --- Section break rules ---
+     All sections flow naturally across pages.
+     Row-level break-inside: avoid (set on tbody tr below) prevents
+     individual rows from being split across a page boundary.
+  */
+  .doc-section {
+    page-break-inside: auto;
+    break-inside: auto;
+    margin-bottom: 20px;
+  }
+
+  /* Section 5 flows naturally — no forced page-break */
+  .doc-section-history {
+    page-break-inside: auto;
+    break-inside: auto;
+  }
+
+  /* Section title stays with its table */
+  .section-title {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+    color: #3730a3 !important;
+    border-left: 3px solid #4f46e5 !important;
+    font-size: 13px !important;
+    margin-bottom: 6px !important;
+  }
+
+  /* --- Executive Summary grid --- */
+  .doc-summary-grid {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .summary-stat-box {
+    background: #f8fafc !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+    padding: 10px 14px !important;
+  }
+
+  .stat-name {
+    color: #475569 !important;
+    font-size: 10px !important;
+  }
+
+  .stat-digit {
+    color: #0f172a !important;
+    font-size: 16px !important;
+  }
+
+  .stat-digit.income-color  { color: #059669 !important; }
+  .stat-digit.expense-color { color: #dc2626 !important; }
+  .stat-digit.savings-color { color: #7c3aed !important; }
+
+  /* --- Category bars --- */
+  .cat-row-info {
+    font-size: 11px !important;
+  }
+
+  .cat-bar-track {
+    background: #e2e8f0 !important;
+  }
+
+  .cat-bar-fill {
+    background: #6366f1 !important;
+  }
+
+  /* --- Tables (Sections 3, 4) --- */
+  .table-responsive {
+    overflow: visible !important;
+  }
+
+  .doc-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    table-layout: fixed !important;
+  }
+
+  /* Repeat header on every printed page */
+  .doc-table thead {
+    display: table-header-group !important;
+  }
+
+  /* Prevent individual rows from splitting across pages */
+  .doc-table tbody tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    orphans: 3;
+    widows: 3;
+  }
+
+  .doc-table th {
+    background: #f1f5f9 !important;
+    color: #1e293b !important;
+    border-bottom: 2px solid #cbd5e1 !important;
+    padding: 5px 6px !important;
+    font-size: 10px !important;
+    text-align: left !important;
+    white-space: nowrap !important;
+  }
+
+  .doc-table td {
+    color: #1e293b !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    padding: 5px 6px !important;
+    font-size: 10px !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+    vertical-align: top !important;
+  }
+
+  /* Date cells: never wrap YYYY-MM-DD */
+  .col-date {
+    white-space: nowrap !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    width: 84px !important;
+    min-width: 84px !important;
+    max-width: 84px !important;
+    font-variant-numeric: tabular-nums !important;
+  }
+
+  /* ---- Column widths for Section 3 (Expense: Date|Category|Description|Amount) ---- */
+  .doc-table-expense col.col-date    { width: 84px !important; }
+  .doc-table-expense col.col-cat     { width: 110px !important; }
+  .doc-table-expense col.col-desc    { width: auto !important; }
+  .doc-table-expense col.col-amount  { width: 80px !important; }
+
+  /* ---- Column widths for Section 4 (Income: Date|Source|Bank|Description|Amount) ---- */
+  .doc-table-income col.col-date    { width: 84px !important; }
+  .doc-table-income col.col-source  { width: 100px !important; }
+  .doc-table-income col.col-bank    { width: 100px !important; }
+  .doc-table-income col.col-desc    { width: auto !important; }
+  .doc-table-income col.col-amount  { width: 80px !important; }
+
+  /* ---- Column widths for Section 5 (History: Date|Type|Cat/Source|Bank|Desc|Amount) ---- */
+  .doc-table-history col.col-date    { width: 84px !important; }
+  .doc-table-history col.col-type    { width: 68px !important; }
+  .doc-table-history col.col-cat     { width: 100px !important; }
+  .doc-table-history col.col-bank    { width: 90px !important; }
+  .doc-table-history col.col-desc    { width: auto !important; }
+  .doc-table-history col.col-amount  { width: 82px !important; }
+
+  /* Amount cells: don't wrap currency values */
+  .col-amount {
+    white-space: nowrap !important;
+    text-align: right !important;
+  }
+
+  /* --- Badges --- */
+  .badge {
+    border: 1px solid #cbd5e1 !important;
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+    font-size: 9px !important;
+    padding: 1px 5px !important;
+  }
+
+  .badge-income   { background: #dcfce7 !important; color: #166534 !important; border-color: #86efac !important; }
+  .badge-expense  { background: #fee2e2 !important; color: #991b1b !important; border-color: #fca5a5 !important; }
+  .badge-category { background: #e0e7ff !important; color: #3730a3 !important; border-color: #a5b4fc !important; }
+
+  .table-amount-income  { color: #059669 !important; font-weight: 700 !important; }
+  .table-amount-expense { color: #dc2626 !important; font-weight: 700 !important; }
+
+  /* --- Footer --- */
   .doc-footer {
     page-break-before: auto;
     border-top: 1px solid #cbd5e1 !important;
     color: #64748b !important;
-    margin-top: 24px;
-    padding-top: 16px;
+    margin-top: 20px;
+    padding-top: 12px;
+    font-size: 10px !important;
   }
 }
 
+/* ============================================================
+   RESPONSIVE (screen)
+   ============================================================ */
 @media (max-width: 768px) {
   .doc-summary-grid {
     grid-template-columns: repeat(2, 1fr);

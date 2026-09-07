@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS users (
     user_id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL
+    password VARCHAR(255) NOT NULL,
+    role VARCHAR(20) NOT NULL DEFAULT 'USER'  -- USER | PREMIUM_USER | ADMIN
 );
 
 -- 2. Categories Table
@@ -65,6 +66,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     title VARCHAR(150) NOT NULL,
     message VARCHAR(500) NOT NULL,
     is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    action_url VARCHAR(255),
     created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -78,9 +80,21 @@ CREATE TABLE IF NOT EXISTS financial_goals (
     deadline DATE
 );
 
+-- 9. Premium Upgrade Requests Table
+CREATE TABLE IF NOT EXISTS premium_requests (
+    request_id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',  -- PENDING | APPROVED | REJECTED
+    requested_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    processed_at TIMESTAMP WITHOUT TIME ZONE,
+    processed_by INTEGER REFERENCES users(user_id) ON DELETE SET NULL
+);
+
 -- Indices for query performance
 CREATE INDEX IF NOT EXISTS idx_expenses_user_date ON expenses(user_id, expense_date);
 CREATE INDEX IF NOT EXISTS idx_income_user_date ON income(user_id, income_date);
 CREATE INDEX IF NOT EXISTS idx_budgets_user_month ON budgets(user_id, month);
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, is_read);
 CREATE INDEX IF NOT EXISTS idx_goals_user ON financial_goals(user_id);
+CREATE INDEX IF NOT EXISTS idx_premium_requests_user ON premium_requests(user_id, status);
+

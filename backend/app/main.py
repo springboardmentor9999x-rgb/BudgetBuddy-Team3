@@ -14,6 +14,8 @@ from app.models.budget import Budget
 from app.models.account import Account
 from app.models.notification import Notification
 from app.models.financial_goal import FinancialGoal
+from app.models.goal_contribution import GoalContribution
+from app.models.premium_request import PremiumRequest
 
 # ============================
 # Create Database Tables
@@ -34,7 +36,11 @@ from app.routers import (
     financial_goals,
     dashboard,
     reports,
-    users
+    users,
+    analytics,
+    admin_analytics,
+    premium,
+    admin_users
 )
 
 # ============================
@@ -43,7 +49,7 @@ from app.routers import (
 app = FastAPI(
     title="BudgetBuddy API",
     description="Full-Stack Personal Budget Planning and Expense Management Platform",
-    version="1.0.0"
+    version="2.0.0"
 )
 
 # ============================
@@ -71,7 +77,7 @@ def home():
     return {
         "message": "Personal Budget Planning API is running",
         "application": "BudgetBuddy",
-        "version": "1.0.0",
+        "version": "2.0.0",
         "status": "success"
     }
 
@@ -89,3 +95,8 @@ app.include_router(financial_goals.router)
 app.include_router(dashboard.router)
 app.include_router(reports.router)
 app.include_router(users.router)
+app.include_router(analytics.router)
+app.include_router(admin_analytics.router)
+app.include_router(premium.router)
+app.include_router(admin_users.router)
+

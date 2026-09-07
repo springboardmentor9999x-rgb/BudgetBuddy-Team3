@@ -2,10 +2,12 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Mail, Lock, LogIn, AlertCircle, Sparkles, CheckCircle2 } from "lucide-react";
 import API from "../services/api";
+import { useRole } from "../context/RoleContext";
 import "./Auth.css";
 
 function Login() {
   const navigate = useNavigate();
+  const { setAuthSession, refreshRole } = useRole();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -27,7 +29,19 @@ function Login() {
         },
       });
 
-      localStorage.setItem("token", response.data.access_token);
+      // Save token and sync role in RoleContext immediately
+      const token = response.data.access_token;
+      const userRole = response.data.role || "USER";
+
+      setAuthSession({
+        token,
+        role: userRole,
+        userEmail: email.trim()
+      });
+
+      // Refresh full profile in background
+      refreshRole();
+
       navigate("/dashboard");
     } catch (err) {
       console.error("Login error:", err);
