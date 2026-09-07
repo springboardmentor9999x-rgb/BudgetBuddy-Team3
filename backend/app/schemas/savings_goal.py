@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 # ==========================================================
@@ -28,7 +28,35 @@ class SavingsGoalBase(BaseModel):
 
     target_date: date | None = None
 
-    status: str = "in_progress"
+    status: str = Field(
+        default="in_progress",
+        min_length=1,
+        max_length=30
+    )
+
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, value: str):
+        value = value.strip()
+
+        if not value:
+            raise ValueError(
+                "Savings goal title cannot be empty"
+            )
+
+        return value
+
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, value: str):
+        value = value.strip()
+
+        if not value:
+            raise ValueError(
+                "Savings goal status cannot be empty"
+            )
+
+        return value
 
 
 # ==========================================================

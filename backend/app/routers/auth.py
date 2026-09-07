@@ -32,6 +32,13 @@ from app.crud.user import (
     create_reset_token,
     get_user_by_reset_token,
     reset_password,
+    start_premium_trial,
+    cancel_premium_trial,
+    reactivate_premium_trial,
+)
+
+from app.crud.notification import (
+    create_premium_request_notification,
 )
 
 from app.core.security import (
@@ -85,7 +92,9 @@ def signup(
                 f"?token={verification_token}"
             )
 
-            email_subject = "Verify your BudgetBuddy account"
+            email_subject = (
+                "Verify your BudgetBuddy account"
+            )
 
             email_body = f"""
 Hello {existing_user.full_name},
@@ -122,7 +131,10 @@ BudgetBuddy Team
 
                 raise HTTPException(
                     status_code=500,
-                    detail=f"Unable to send verification email: {str(e)}"
+                    detail=(
+                        "Unable to send verification email: "
+                        f"{str(e)}"
+                    )
                 )
 
             return existing_user
@@ -170,7 +182,9 @@ BudgetBuddy Team
     # CREATE VERIFICATION EMAIL
     # ------------------------------------------------------
 
-    email_subject = "Verify your BudgetBuddy account"
+    email_subject = (
+        "Verify your BudgetBuddy account"
+    )
 
     email_body = f"""
 Hello {user.full_name},
@@ -214,7 +228,10 @@ BudgetBuddy Team
 
         raise HTTPException(
             status_code=500,
-            detail=f"Unable to send verification email: {str(e)}"
+            detail=(
+                "Unable to send verification email: "
+                f"{str(e)}"
+            )
         )
 
     return user
@@ -249,7 +266,10 @@ def resend_verification(
     if user.is_verified:
 
         return {
-            "message": "Email is already verified. You can login."
+            "message": (
+                "Email is already verified. "
+                "You can login."
+            )
         }
 
     verification_token = create_verification_token(
@@ -262,7 +282,9 @@ def resend_verification(
         f"?token={verification_token}"
     )
 
-    email_subject = "Verify your BudgetBuddy account"
+    email_subject = (
+        "Verify your BudgetBuddy account"
+    )
 
     email_body = f"""
 Hello {user.full_name},
@@ -302,7 +324,10 @@ BudgetBuddy Team
 
         raise HTTPException(
             status_code=500,
-            detail=f"Unable to send verification email: {str(e)}"
+            detail=(
+                "Unable to send verification email: "
+                f"{str(e)}"
+            )
         )
 
     return {
@@ -355,7 +380,10 @@ def login(
 
         raise HTTPException(
             status_code=403,
-            detail="Please verify your email before logging in"
+            detail=(
+                "Please verify your email "
+                "before logging in"
+            )
         )
 
     token = create_access_token(
@@ -387,6 +415,267 @@ def read_me(
 
 
 # ==========================================================
+# REQUEST PREMIUM ACCESS
+# ==========================================================
+#
+# Basic User:
+#
+#   Explore Premium
+#          ↓
+#   Request Premium
+#          ↓
+#   Admin Notification
+#          ↓
+#   Admin User Management
+#          ↓
+#   Admin changes role: user → premium
+#
+# IMPORTANT:
+#
+# - No payment gateway is used.
+# - No frontend role change is trusted.
+# - Only a Basic "user" account can submit the request.
+# - Premium users cannot request Premium again.
+# - Admin cannot request Premium.
+# - The request is stored as an existing notification.
+#
+# ==========================================================
+
+@router.post(
+    "/request-premium"
+)
+def request_premium(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+
+    # ------------------------------------------------------
+    # ONLY BASIC USERS CAN REQUEST PREMIUM
+    # ------------------------------------------------------
+
+    if current_user.role != "user":
+
+        if current_user.role == "premium":
+
+            raise HTTPException(
+                status_code=400,
+                detail="Your account already has Premium access."
+            )
+
+        if current_user.role == "admin":
+
+            raise HTTPException(
+                status_code=400,
+                detail="Admin account already has Premium-level access."
+            )
+
+        raise HTTPException(
+            status_code=403,
+            detail="Only Basic Users can request Premium access."
+        )
+
+    # ------------------------------------------------------
+    # CREATE ADMIN NOTIFICATION
+    # ------------------------------------------------------
+
+    notification = create_premium_request_notification(
+        db=db,
+        user_id=current_user.id
+    )
+
+    # ------------------------------------------------------
+    # NO ADMIN ACCOUNT FOUND
+    # ------------------------------------------------------
+
+    if notification is None:
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Unable to submit Premium request because "
+                "no active Admin account was found."
+            )
+        )
+
+    # ------------------------------------------------------
+    # SUCCESS
+    # ------------------------------------------------------
+
+    return {
+        "message": (
+            "Premium request submitted successfully. "
+            "The Admin has been notified."
+        ),
+        "request_id": notification.id
+    }
+
+
+# ==========================================================
+# START PREMIUM TRIAL
+# ==========================================================
+#
+# Activates a one-month free Premium trial for the current
+# user, triggered from the "Explore Premium" upgrade modal.
+#
+# Eligibility (enforced server-side, not just in the UI):
+#
+#   - Only "user" role accounts may start a trial.
+#   - Each account may only ever use the free trial once.
+#
+# ==========================================================
+
+@router.post(
+    "/start-trial",
+    response_model=UserOut
+)
+def start_trial(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+
+    updated_user, error = start_premium_trial(
+        db=db,
+        user=current_user
+    )
+
+    if error:
+
+        raise HTTPException(
+            status_code=400,
+            detail=error
+        )
+
+    # ------------------------------------------------------
+    # BEST-EFFORT CONFIRMATION EMAIL
+    #
+    # The trial is already active at this point, so a failed
+    # email should never block the upgrade itself.
+    # ------------------------------------------------------
+
+    try:
+
+        send_email(
+            to_email=updated_user.email,
+            subject="Your BudgetBuddy Premium trial has started",
+            body=f"""
+Hello {updated_user.full_name},
+
+Your 1-month free Premium trial is now active.
+
+You now have access to:
+
+- Historical trends
+- 6 and 12 month analytics
+- Custom date ranges
+- Month comparison
+- Savings analytics
+- PDF export
+- Excel export
+- Advanced insights
+
+Your trial ends on {updated_user.premium_expires_at.strftime('%d %b %Y')}.
+
+Regards,
+BudgetBuddy Team
+"""
+        )
+
+    except Exception as e:
+
+        print(
+            "Failed to send premium trial confirmation email:",
+            str(e)
+        )
+
+    return updated_user
+
+
+# ==========================================================
+# CANCEL PREMIUM TRIAL (REVERSIBLE)
+# ==========================================================
+#
+# Schedules cancellation of the current user's Premium plan,
+# triggered from the "Cancel Premium" option in the Analytics
+# page or the Profile page.
+#
+# This does NOT immediately revoke Premium access. The user
+# keeps Premium until the original premium_expires_at date,
+# and can undo this via POST /auth/reactivate-premium at any
+# time before then.
+#
+# trial_used stays True, so cancelling does not grant a
+# fresh free trial.
+#
+# ==========================================================
+
+@router.post(
+    "/cancel-premium",
+    response_model=UserOut
+)
+def cancel_trial(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+
+    updated_user, error = cancel_premium_trial(
+        db=db,
+        user=current_user
+    )
+
+    if error:
+
+        raise HTTPException(
+            status_code=400,
+            detail=error
+        )
+
+    return updated_user
+
+
+# ==========================================================
+# REACTIVATE PREMIUM TRIAL (UNDO CANCELLATION)
+# ==========================================================
+#
+# Reverses a scheduled cancellation, triggered from the
+# "Reactivate Premium" option shown after a user cancels but
+# their current Premium period hasn't ended yet.
+#
+# IMPORTANT:
+#   - Does NOT start a new trial.
+#   - Does NOT change premium_expires_at.
+#   - Does NOT charge the user.
+#
+# If the original Premium period has already expired, this
+# will fail — the user must use the Premium upgrade flow
+# instead.
+#
+# ==========================================================
+
+@router.post(
+    "/reactivate-premium",
+    response_model=UserOut
+)
+def reactivate_trial(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+
+    updated_user, error = reactivate_premium_trial(
+        db=db,
+        user=current_user
+    )
+
+    if error:
+
+        raise HTTPException(
+            status_code=400,
+            detail=error
+        )
+
+    return updated_user
+
+
+# ==========================================================
 # UPDATE NAME
 # ==========================================================
 
@@ -413,7 +702,9 @@ def update_my_name(
 
         raise HTTPException(
             status_code=400,
-            detail="Name must contain at least 2 characters"
+            detail=(
+                "Name must contain at least 2 characters"
+            )
         )
 
     current_user.full_name = new_name
@@ -426,6 +717,25 @@ def update_my_name(
 
 # ==========================================================
 # UPDATE PROFILE
+# ==========================================================
+#
+# IMPORTANT SECURITY RULE:
+#
+# Users can update:
+#
+#   - full_name
+#   - phone
+#
+# Users CANNOT update:
+#
+#   - role
+#   - email
+#   - is_active
+#   - is_verified
+#
+# Role changes will be handled separately through
+# administrator functionality.
+#
 # ==========================================================
 
 @router.put(
@@ -442,72 +752,73 @@ def update_my_profile(
     # VALIDATE FULL NAME
     # ------------------------------------------------------
 
-    new_name = profile_data.full_name.strip()
+    if profile_data.full_name is not None:
 
-    if not new_name:
+        new_name = profile_data.full_name.strip()
 
-        raise HTTPException(
-            status_code=400,
-            detail="Name cannot be empty"
-        )
+        if not new_name:
 
-    if len(new_name) < 2:
+            raise HTTPException(
+                status_code=400,
+                detail="Name cannot be empty"
+            )
 
-        raise HTTPException(
-            status_code=400,
-            detail="Name must contain at least 2 characters"
-        )
+        if len(new_name) < 2:
+
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Name must contain at least "
+                    "2 characters"
+                )
+            )
+
+        current_user.full_name = new_name
 
     # ------------------------------------------------------
     # VALIDATE PHONE
     # ------------------------------------------------------
 
-    new_phone = profile_data.phone
+    if profile_data.phone is not None:
 
-    if new_phone is not None:
-
-        new_phone = new_phone.strip()
+        new_phone = profile_data.phone.strip()
 
         if new_phone == "":
-            new_phone = None
+
+            current_user.phone = None
 
         elif not new_phone.isdigit():
 
             raise HTTPException(
                 status_code=400,
-                detail="Phone number must contain only digits"
+                detail=(
+                    "Phone number must contain "
+                    "only digits"
+                )
             )
 
         elif len(new_phone) != 10:
 
             raise HTTPException(
                 status_code=400,
-                detail="Phone number must contain exactly 10 digits"
+                detail=(
+                    "Phone number must contain "
+                    "exactly 10 digits"
+                )
             )
 
-    # ------------------------------------------------------
-    # VALIDATE ROLE
-    # ------------------------------------------------------
+        else:
 
-    new_role = profile_data.role.strip().lower()
-
-    if not new_role:
-
-        raise HTTPException(
-            status_code=400,
-            detail="Role cannot be empty"
-        )
+            current_user.phone = new_phone
 
     # ------------------------------------------------------
-    # UPDATE USER
+    # ROLE IS INTENTIONALLY NOT UPDATED
     # ------------------------------------------------------
-
-    current_user.full_name = new_name
-    current_user.phone = new_phone
-    current_user.role = new_role
-
-    # ------------------------------------------------------
-    # SAVE
+    #
+    # Do NOT accept role from the frontend.
+    #
+    # current_user.role remains unchanged.
+    #
     # ------------------------------------------------------
 
     db.commit()
@@ -537,11 +848,16 @@ def verify_user_email(
 
         raise HTTPException(
             status_code=400,
-            detail="Invalid or expired verification token"
+            detail=(
+                "Invalid or expired verification token"
+            )
         )
 
     return {
-        "message": "Email verified successfully. You can now login."
+        "message": (
+            "Email verified successfully. "
+            "You can now login."
+        )
     }
 
 
@@ -581,7 +897,9 @@ def forgot_password(
         f"?token={reset_token}"
     )
 
-    email_subject = "BudgetBuddy Password Reset"
+    email_subject = (
+        "BudgetBuddy Password Reset"
+    )
 
     email_body = f"""
 Hello {user.full_name},
@@ -621,7 +939,10 @@ BudgetBuddy Team
 
         raise HTTPException(
             status_code=500,
-            detail=f"Unable to send password reset email: {str(e)}"
+            detail=(
+                "Unable to send password reset email: "
+                f"{str(e)}"
+            )
         )
 
     return {
@@ -653,7 +974,9 @@ def reset_user_password(
 
         raise HTTPException(
             status_code=400,
-            detail="Invalid or expired reset token"
+            detail=(
+                "Invalid or expired reset token"
+            )
         )
 
     reset_password(
@@ -670,8 +993,6 @@ def reset_user_password(
 # ==========================================================
 # DELETE CURRENT USER ACCOUNT
 # ==========================================================
-#
-# IMPORTANT:
 #
 # This deletes ALL information belonging to the current user.
 #
@@ -747,9 +1068,6 @@ def delete_my_account(
         # DELETE SAVINGS GOALS
         # --------------------------------------------------
 
-        # MUST happen before bank accounts because
-        # savings_goals.bank_account_id references bank_accounts.id.
-
         db.query(SavingsGoal).filter(
             SavingsGoal.user_id == user_id
         ).delete(
@@ -793,7 +1111,10 @@ def delete_my_account(
         db.commit()
 
         return {
-            "message": "Account and all associated data deleted successfully."
+            "message": (
+                "Account and all associated data "
+                "deleted successfully."
+            )
         }
 
     except Exception as e:
@@ -811,5 +1132,8 @@ def delete_my_account(
 
         raise HTTPException(
             status_code=500,
-            detail="Failed to delete account and associated data."
+            detail=(
+                "Failed to delete account and "
+                "associated data."
+            )
         )

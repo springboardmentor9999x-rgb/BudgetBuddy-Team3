@@ -3,11 +3,35 @@ import { toast } from "react-toastify";
 
 import ExpenseForm from "../components/expenses/ExpenseForm";
 import ExpenseList from "../components/expenses/ExpenseList";
+import MonthSelector from "../components/MonthSelector";
 
 import { getExpenses } from "../api/transactions";
 
 
 export default function Expense() {
+
+  // ==========================================================
+  // SELECTED MONTH
+  // ==========================================================
+
+  const getCurrentMonth = () => {
+
+    const now = new Date();
+
+    return `${now.getFullYear()}-${String(
+      now.getMonth() + 1
+    ).padStart(2, "0")}`;
+
+  };
+
+
+  const [selectedMonth, setSelectedMonth] =
+    useState(getCurrentMonth());
+
+
+  // ==========================================================
+  // DATA
+  // ==========================================================
 
   const [expenses, setExpenses] = useState([]);
 
@@ -31,7 +55,9 @@ export default function Expense() {
 
       setLoading(true);
 
-      const data = await getExpenses();
+      const data = await getExpenses(
+        selectedMonth
+      );
 
       setExpenses(
         Array.isArray(data)
@@ -72,11 +98,15 @@ export default function Expense() {
   };
 
 
+  // ==========================================================
+  // LOAD EXPENSES WHEN MONTH CHANGES
+  // ==========================================================
+
   useEffect(() => {
 
     fetchExpenses();
 
-  }, []);
+  }, [selectedMonth]);
 
 
   // ==========================================================
@@ -148,9 +178,19 @@ export default function Expense() {
 
       <main className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
 
-        {/* HEADER */}
+        {/* ==================================================
+            HEADER
+        ================================================== */}
 
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
+        <div className="
+          flex
+          flex-col
+          sm:flex-row
+          sm:justify-between
+          sm:items-center
+          gap-4
+          mb-8
+        ">
 
           <div>
 
@@ -167,7 +207,14 @@ export default function Expense() {
 
           <button
             onClick={handleAdd}
-            className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg"
+            className="
+              bg-red-600
+              hover:bg-red-700
+              text-white
+              px-6
+              py-3
+              rounded-lg
+            "
           >
             + Add Expense
           </button>
@@ -175,7 +222,9 @@ export default function Expense() {
         </div>
 
 
-        {/* FORM */}
+        {/* ==================================================
+            FORM
+        ================================================== */}
 
         {showForm && (
 
@@ -192,11 +241,40 @@ export default function Expense() {
         )}
 
 
-        {/* LIST */}
+        {/* ==================================================
+            MONTH SELECTOR
+        ================================================== */}
+
+        <div className="
+          bg-white
+          rounded-xl
+          shadow
+          p-5
+          mb-6
+        ">
+
+          <MonthSelector
+            value={selectedMonth}
+            onChange={setSelectedMonth}
+            label="Expense History"
+          />
+
+        </div>
+
+
+        {/* ==================================================
+            LIST
+        ================================================== */}
 
         {loading ? (
 
-          <div className="bg-white rounded-xl shadow p-10 text-center">
+          <div className="
+            bg-white
+            rounded-xl
+            shadow
+            p-10
+            text-center
+          ">
             Loading expenses...
           </div>
 

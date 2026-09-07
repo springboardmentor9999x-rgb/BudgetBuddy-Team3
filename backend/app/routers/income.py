@@ -62,6 +62,8 @@ def add_income(
 def list_incomes(
     skip: int = 0,
     limit: int = 100,
+    month: int | None = None,
+    year: int | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -69,7 +71,9 @@ def list_incomes(
         db,
         current_user.id,
         skip,
-        limit
+        limit,
+        month,
+        year
     )
 
 

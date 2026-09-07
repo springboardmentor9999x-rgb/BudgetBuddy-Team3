@@ -17,6 +17,10 @@ import {
 
 import api from "../api/axios";
 
+import CancelPremiumModal from "../components/CancelPremiumModal";
+
+import { reactivatePremiumTrial } from "../api/billing";
+
 
 export default function Profile() {
 
@@ -24,6 +28,7 @@ export default function Profile() {
     user,
     updateUser,
     deleteAccount,
+    refreshUser,
   } = useAuth();
 
 
@@ -60,6 +65,26 @@ export default function Profile() {
   const [
     showDeleteModal,
     setShowDeleteModal
+  ] = useState(false);
+
+
+  // ==========================================================
+  // CANCEL PREMIUM MODAL
+  // ==========================================================
+
+  const [
+    showCancelPremiumModal,
+    setShowCancelPremiumModal
+  ] = useState(false);
+
+
+  // ==========================================================
+  // REACTIVATE PREMIUM
+  // ==========================================================
+
+  const [
+    reactivatingPremium,
+    setReactivatingPremium
   ] = useState(false);
 
 
@@ -154,6 +179,28 @@ export default function Profile() {
 
       toast.error(
         "Name must contain at least 2 characters"
+      );
+
+      return;
+    }
+
+
+    // --------------------------------------------------------
+    // NAME CHARACTER VALIDATION
+    // --------------------------------------------------------
+    // Names must contain letters.
+    // Spaces, periods, apostrophes and hyphens are allowed
+    // between name parts.
+    // --------------------------------------------------------
+
+    if (
+      !/^[^\W\d_]+(?:[ .'-]+[^\W\d_]+)*$/u.test(
+        newName
+      )
+    ) {
+
+      toast.error(
+        "Name must contain letters only"
       );
 
       return;
@@ -471,6 +518,126 @@ export default function Profile() {
         year: "numeric",
       }
     );
+
+  };
+
+
+  // ==========================================================
+  // PREMIUM PLAN INFO
+  // ==========================================================
+
+  const currentRole = String(
+    user?.role || "user"
+  )
+    .trim()
+    .toLowerCase();
+
+  const isAdminRole =
+    currentRole === "admin";
+
+  const isPremiumTrial =
+    currentRole === "premium" &&
+    Boolean(user?.premium_expires_at);
+
+  const isCancellationScheduled =
+    isPremiumTrial &&
+    Boolean(user?.cancellation_requested);
+
+  // Days remaining until premium_expires_at (never negative).
+  const premiumDaysRemaining = (() => {
+
+    if (!user?.premium_expires_at) {
+
+      return null;
+
+    }
+
+    const expiresAt = new Date(
+      user.premium_expires_at
+    );
+
+    if (Number.isNaN(expiresAt.getTime())) {
+
+      return null;
+
+    }
+
+    const diffMs =
+      expiresAt.getTime() - Date.now();
+
+    return Math.max(
+      0,
+      Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+    );
+
+  })();
+
+
+  const handlePremiumCancelled = async () => {
+
+    if (refreshUser) {
+
+      await refreshUser();
+
+    }
+
+    setShowCancelPremiumModal(
+      false
+    );
+
+    toast.success(
+      "Cancellation scheduled. Your premium access continues until " +
+      formatCreatedDate(user?.premium_expires_at) + "."
+    );
+
+  };
+
+
+  // ==========================================================
+  // REACTIVATE PREMIUM
+  // ==========================================================
+
+  const handleReactivatePremium = async () => {
+
+    if (reactivatingPremium) {
+
+      return;
+
+    }
+
+    try {
+
+      setReactivatingPremium(true);
+
+      await reactivatePremiumTrial();
+
+      if (refreshUser) {
+
+        await refreshUser();
+
+      }
+
+      toast.success(
+        "Your premium plan has been reactivated."
+      );
+
+    } catch (error) {
+
+      console.error(
+        "Failed to reactivate premium:",
+        error
+      );
+
+      toast.error(
+        error.response?.data?.detail ||
+        "Unable to reactivate your premium plan right now. Please try again."
+      );
+
+    } finally {
+
+      setReactivatingPremium(false);
+
+    }
 
   };
 
@@ -876,6 +1043,180 @@ export default function Profile() {
               </div>
 
 
+              {/* PREMIUM PLAN */}
+
+              <div>
+
+                <label className="block font-medium text-gray-700 mb-2">
+                  Premium Plan
+                </label>
+
+                {isPremiumTrial ? (
+
+                  <div
+                    className="
+                      w-full
+                      bg-purple-50
+                      border
+                      border-purple-200
+                      rounded-lg
+                      px-4
+                      py-3
+                    "
+                  >
+
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+
+                      <div>
+
+                        <p className="text-purple-800 font-medium">
+                          Premium (free trial)
+                        </p>
+
+                        {isCancellationScheduled ? (
+
+                          <>
+
+                            <p className="text-xs text-amber-700 font-medium mt-1">
+                              Cancellation scheduled
+                            </p>
+
+                            <p className="text-xs text-purple-600 mt-0.5">
+                              Premium access continues until{" "}
+                              {formatCreatedDate(
+                                user?.premium_expires_at
+                              )}
+                            </p>
+
+                          </>
+
+                        ) : (
+
+                          <p className="text-xs text-purple-600 mt-1">
+                            Renews to Basic on{" "}
+                            {formatCreatedDate(
+                              user?.premium_expires_at
+                            )}
+                          </p>
+
+                        )}
+
+                        {premiumDaysRemaining !== null && (
+
+                          <p className="text-xs text-gray-500 mt-1">
+                            {premiumDaysRemaining}{" "}
+                            {premiumDaysRemaining === 1
+                              ? "day"
+                              : "days"}{" "}
+                            remaining
+                          </p>
+
+                        )}
+
+                      </div>
+
+                      {isCancellationScheduled ? (
+
+                        <button
+                          type="button"
+                          onClick={
+                            handleReactivatePremium
+                          }
+                          disabled={
+                            reactivatingPremium
+                          }
+                          className="
+                            text-sm
+                            text-purple-700
+                            hover:text-purple-800
+                            disabled:text-gray-400
+                            font-medium
+                            underline
+                          "
+                        >
+                          {reactivatingPremium
+                            ? "Reactivating..."
+                            : "Reactivate Premium"}
+                        </button>
+
+                      ) : (
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setShowCancelPremiumModal(
+                              true
+                            )
+                          }
+                          className="
+                            text-sm
+                            text-red-600
+                            hover:text-red-700
+                            font-medium
+                            underline
+                          "
+                        >
+                          Cancel Premium
+                        </button>
+
+                      )}
+
+                    </div>
+
+                  </div>
+
+                ) : isAdminRole ? (
+
+                  <div
+                    className="
+                      w-full
+                      bg-gray-50
+                      border
+                      border-gray-200
+                      rounded-lg
+                      px-4
+                      py-3
+                      text-gray-800
+                    "
+                  >
+                    Admin access (includes premium features)
+                  </div>
+
+                ) : (
+
+                  <div
+                    className="
+                      w-full
+                      bg-gray-50
+                      border
+                      border-gray-200
+                      rounded-lg
+                      px-4
+                      py-3
+                      text-gray-600
+                    "
+                  >
+                    {user?.trial_used
+                      ? "Your Premium trial has ended."
+                      : "You're on the Basic plan."}{" "}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        navigate("/analytics")
+                      }
+                      className="text-blue-600 hover:text-blue-700 font-medium underline"
+                    >
+                      {user?.trial_used
+                        ? "Upgrade to Premium"
+                        : "Explore Premium"}
+                    </button>
+                  </div>
+
+                )}
+
+              </div>
+
+
               {/* ACCOUNT CREATED */}
 
               <div>
@@ -1226,6 +1567,22 @@ export default function Profile() {
         </div>
 
       )}
+
+
+      {/* ======================================================
+          CANCEL PREMIUM MODAL
+      ====================================================== */}
+
+      <CancelPremiumModal
+        isOpen={showCancelPremiumModal}
+        onClose={() =>
+          setShowCancelPremiumModal(false)
+        }
+        onCancelled={handlePremiumCancelled}
+        premiumEndDateLabel={formatCreatedDate(
+          user?.premium_expires_at
+        )}
+      />
 
     </div>
 

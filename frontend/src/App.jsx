@@ -32,6 +32,14 @@ import SavingsGoals from "./pages/SavingsGoals";
 import AnalyticsDashboard from "./pages/AnalyticsDashboard";
 
 // ==========================================================
+// ADMIN PAGES
+// ==========================================================
+
+import AdminDashboard from "./pages/AdminDashboard";
+import UserManagement from "./pages/UserManagement";
+import SystemAnalytics from "./pages/SystemAnalytics";
+
+// ==========================================================
 // ROUTE / LAYOUT
 // ==========================================================
 
@@ -202,6 +210,49 @@ export default function App() {
             <ProtectedRoute>
               <Layout>
                 <Profile />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* ==================================================
+            ADMIN ROUTES
+        ================================================== */}
+
+        {/* ADMIN DASHBOARD */}
+
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <Layout>
+                <AdminDashboard />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* USER MANAGEMENT */}
+
+        <Route
+          path="/admin/users"
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <Layout>
+                <UserManagement />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* SYSTEM ANALYTICS */}
+
+        <Route
+          path="/admin/system-analytics"
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <Layout>
+                <SystemAnalytics />
               </Layout>
             </ProtectedRoute>
           }

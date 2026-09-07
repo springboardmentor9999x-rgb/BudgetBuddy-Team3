@@ -1,3 +1,5 @@
+import { toast } from "react-toastify";
+
 export default function BankAccountForm({
   form,
   setForm,
@@ -6,6 +8,33 @@ export default function BankAccountForm({
   onCancel,
   loading,
 }) {
+  const handleBankNameChange = (e) => {
+    setForm({
+      ...form,
+      bank_name: e.target.value,
+    });
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    const bankName = form.bank_name.trim();
+
+    if (!bankName) {
+      toast.error("Bank name cannot be empty");
+      return;
+    }
+
+    if (
+      !/^[^\W\d_]+(?:[ .'-]+[^\W\d_]+)*$/u.test(bankName)
+    ) {
+      toast.error("Bank name must contain letters only");
+      return;
+    }
+
+    onSubmit(e);
+  };
+
   return (
     <div className="bg-white rounded-xl shadow p-6 mb-8">
 
@@ -13,7 +42,7 @@ export default function BankAccountForm({
         {editing ? "Edit Bank Account" : "Add Bank Account"}
       </h2>
 
-      <form onSubmit={onSubmit} className="grid gap-4">
+      <form onSubmit={handleSubmit} className="grid gap-4">
 
         {/* BANK NAME */}
 
@@ -26,12 +55,7 @@ export default function BankAccountForm({
             type="text"
             placeholder="Example: SBI"
             value={form.bank_name}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                bank_name: e.target.value,
-              })
-            }
+            onChange={handleBankNameChange}
             className="w-full border rounded-lg p-3"
             required
           />
@@ -83,11 +107,34 @@ export default function BankAccountForm({
             required
           >
             <option value="">Select account type</option>
-            <option value="Savings">Savings</option>
-            <option value="Current">Current</option>
-            <option value="Salary">Salary</option>
-            <option value="Fixed Deposit">Fixed Deposit</option>
-            <option value="Other">Other</option>
+
+            <option value="Savings Account">
+              Savings Account
+            </option>
+
+            <option value="Current Account">
+              Current Account
+            </option>
+
+            <option value="Salary Account">
+              Salary Account
+            </option>
+
+            <option value="Fixed Deposit (FD)">
+              Fixed Deposit (FD)
+            </option>
+
+            <option value="Recurring Deposit (RD)">
+              Recurring Deposit (RD)
+            </option>
+
+            <option value="Credit Card">
+              Credit Card
+            </option>
+
+            <option value="Other">
+              Other
+            </option>
           </select>
         </div>
 

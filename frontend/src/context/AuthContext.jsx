@@ -16,7 +16,7 @@ export function AuthProvider({ children }) {
   // ==========================================================
 
   const [token, setToken] = useState(
-    () => localStorage.getItem("token")
+    () => sessionStorage.getItem("token")
   );
 
   const [user, setUser] = useState(null);
@@ -58,7 +58,7 @@ export function AuthProvider({ children }) {
           error
         );
 
-        localStorage.removeItem(
+        sessionStorage.removeItem(
           "token"
         );
 
@@ -148,7 +148,9 @@ export function AuthProvider({ children }) {
       response.data.access_token;
 
     // Save token
-    localStorage.setItem(
+    // sessionStorage keeps each browser tab's
+    // authentication session separate.
+    sessionStorage.setItem(
       "token",
       accessToken
     );
@@ -173,6 +175,35 @@ export function AuthProvider({ children }) {
 
 
   // ==========================================================
+  // REFRESH USER
+  //
+  // Re-fetches the current user from the backend (e.g. after
+  // the role changes server-side, such as starting a Premium
+  // trial) and updates auth state so the rest of the app
+  // (like AnalyticsDashboard) re-renders with the new access
+  // level immediately — no page reload required.
+  // ==========================================================
+
+  const refreshUser = async () => {
+
+    if (!token) {
+
+      return null;
+
+    }
+
+    const response = await api.get(
+      "/auth/me"
+    );
+
+    setUser(response.data);
+
+    return response.data;
+
+  };
+
+
+  // ==========================================================
   // DELETE ACCOUNT
   // ==========================================================
 
@@ -188,7 +219,7 @@ export function AuthProvider({ children }) {
       // DELETE TOKEN
       // ------------------------------------------------------
 
-      localStorage.removeItem(
+      sessionStorage.removeItem(
         "token"
       );
 
@@ -221,7 +252,7 @@ export function AuthProvider({ children }) {
 
   const logout = () => {
 
-    localStorage.removeItem(
+    sessionStorage.removeItem(
       "token"
     );
 
@@ -247,6 +278,7 @@ export function AuthProvider({ children }) {
         login,
         logout,
         updateUser,
+        refreshUser,
         deleteAccount,
       }}
     >

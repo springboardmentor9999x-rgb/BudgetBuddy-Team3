@@ -1,11 +1,14 @@
+import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import NotificationBell from "./notification/NotificationBell";
+import PremiumUpgradeModal from "./PremiumUpgradeModal";
 
 export default function Layout({ children }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const navigationItems = [
     {
@@ -49,6 +52,34 @@ export default function Layout({ children }) {
       icon: "👤",
     },
   ];
+
+  /*
+   * Admin navigation is added only for the existing Admin account.
+   * Normal users and Premium users will continue seeing the
+   * existing navigation above.
+   */
+  const adminNavigationItems = [
+    {
+      path: "/admin",
+      label: "Admin Dashboard",
+      icon: "🛡️",
+    },
+    {
+      path: "/admin/users",
+      label: "User Management",
+      icon: "👥",
+    },
+    {
+      path: "/admin/system-analytics",
+      label: "System Analytics",
+      icon: "📈",
+    },
+  ];
+
+  const allNavigationItems =
+    user?.role === "admin"
+      ? [...navigationItems, ...adminNavigationItems]
+      : navigationItems;
 
   const isActive = (path) => {
     return location.pathname === path;
@@ -101,7 +132,7 @@ export default function Layout({ children }) {
 
           <div className="space-y-2">
 
-            {navigationItems.map((item) => {
+            {allNavigationItems.map((item) => {
 
               const active = isActive(item.path);
 
@@ -143,6 +174,58 @@ export default function Layout({ children }) {
           </div>
 
         </nav>
+
+        {/* =================================================
+            UPGRADE TO PREMIUM
+
+            Visible only to Basic Users (role === "user").
+            Hidden for Premium users and Admins. Reuses the
+            existing PremiumUpgradeModal + requestPremium()
+            flow - no new modal or API is created here.
+        ================================================= */}
+
+        {user?.role === "user" && (
+          <div className="px-4 pb-4">
+            <div
+              className="
+                rounded-xl
+                p-4
+                bg-blue-500
+                bg-opacity-40
+                border
+                border-blue-400
+              "
+            >
+              <p className="font-semibold flex items-center gap-2">
+                <span>⭐</span>
+                <span>Upgrade to Premium</span>
+              </p>
+
+              <p className="text-blue-100 text-xs mt-2">
+                Unlock advanced analytics and premium
+                reports.
+              </p>
+
+              <button
+                onClick={() => setShowUpgradeModal(true)}
+                className="
+                  w-full
+                  mt-3
+                  py-2
+                  rounded-lg
+                  bg-white
+                  text-blue-600
+                  text-sm
+                  font-semibold
+                  hover:bg-blue-50
+                  transition
+                "
+              >
+                Upgrade Now
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* LOGOUT */}
 
@@ -255,6 +338,20 @@ export default function Layout({ children }) {
         </main>
 
       </div>
+
+      {/* =====================================================
+          PREMIUM UPGRADE MODAL
+
+          Reuses the existing PremiumUpgradeModal component
+          and requestPremium() flow so the sidebar "Upgrade
+          Now" button behaves identically to the Analytics
+          page upgrade flow.
+      ===================================================== */}
+
+      <PremiumUpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+      />
 
     </div>
   );

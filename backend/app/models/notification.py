@@ -43,6 +43,29 @@ class Notification(Base):
         nullable=False
     )
 
+    # ------------------------------------------------------
+    # PREMIUM REQUEST TRACKING
+    #
+    # requester_id stores the user who requested Premium.
+    # request_status stores:
+    #   pending
+    #   approved
+    #   rejected
+    #
+    # These are nullable so existing notifications continue
+    # working exactly as before.
+    # ------------------------------------------------------
+
+    requester_id = Column(
+        Integer,
+        nullable=True
+    )
+
+    request_status = Column(
+        String,
+        nullable=True
+    )
+
     is_read = Column(
         Boolean,
         default=False,
@@ -72,3 +95,4 @@ class Notification(Base):
         "User",
         back_populates="notifications"
     )
+

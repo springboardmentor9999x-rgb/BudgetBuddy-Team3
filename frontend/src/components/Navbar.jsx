@@ -26,34 +26,136 @@ export default function Navbar() {
 
   const notificationRef = useRef(null);
 
+  // ----------------------------------------------------------
+  // IMPORTANT
+  //
+  // Stores the ID of the user for whom the latest notification
+  // request was made.
+  //
+  // This prevents an old user's API response from being placed
+  // into the new user's notification state.
+  // ----------------------------------------------------------
+
+  const notificationUserIdRef = useRef(null);
+
+  // ----------------------------------------------------------
+  // Keeps the latest AbortController.
+  //
+  // When the user changes, the previous request is cancelled.
+  // ----------------------------------------------------------
+
+  const notificationAbortControllerRef = useRef(null);
+
 
   // ==========================================================
   // FETCH NOTIFICATIONS
   // ==========================================================
 
   const fetchNotifications = async () => {
+    // --------------------------------------------------------
     // Do not request notifications if user is not logged in
+    // --------------------------------------------------------
+
     if (!user) {
       setNotifications([]);
+      notificationUserIdRef.current = null;
+
+      if (
+        notificationAbortControllerRef.current
+      ) {
+        notificationAbortControllerRef.current.abort();
+
+        notificationAbortControllerRef.current = null;
+      }
+
       return;
     }
+
+    const currentUserId = user.id;
+
+    // --------------------------------------------------------
+    // Cancel any previous notification request.
+    // --------------------------------------------------------
+
+    if (
+      notificationAbortControllerRef.current
+    ) {
+      notificationAbortControllerRef.current.abort();
+    }
+
+    const controller =
+      new AbortController();
+
+    notificationAbortControllerRef.current =
+      controller;
+
+    // Remember which user this request belongs to.
+    notificationUserIdRef.current =
+      currentUserId;
 
     try {
       setNotificationLoading(true);
 
-      const data = await getNotifications();
+      const data = await getNotifications(
+        controller.signal
+      );
+
+      // ------------------------------------------------------
+      // IMPORTANT SECURITY / STATE CHECK
+      //
+      // Only update notifications if the response still
+      // belongs to the currently logged-in user.
+      // ------------------------------------------------------
+
+      if (
+        notificationUserIdRef.current !==
+        currentUserId
+      ) {
+        return;
+      }
+
+      // Also verify that the current user has not changed.
+      if (!user || user.id !== currentUserId) {
+        return;
+      }
 
       setNotifications(
         Array.isArray(data) ? data : []
       );
 
     } catch (error) {
+
+      // ------------------------------------------------------
+      // AbortError is expected when switching users or when
+      // another request replaces the previous request.
+      // Do not show it as a real error.
+      // ------------------------------------------------------
+
+      if (
+        error?.name === "CanceledError" ||
+        error?.name === "AbortError" ||
+        error?.code === "ERR_CANCELED"
+      ) {
+        return;
+      }
+
       console.error(
         "Navbar notification fetch error:",
         error
       );
+
     } finally {
-      setNotificationLoading(false);
+
+      // Only clear loading state if this request still
+      // belongs to the current user.
+
+      if (
+        notificationUserIdRef.current ===
+        currentUserId
+      ) {
+        setNotificationLoading(false);
+      }
+
     }
   };
 
@@ -63,16 +165,48 @@ export default function Navbar() {
   // ==========================================================
 
   useEffect(() => {
+
+    // --------------------------------------------------------
+    // IMPORTANT:
+    //
+    // Clear old user's notifications immediately whenever
+    // the authenticated user changes.
+    // --------------------------------------------------------
+
+    setNotifications([]);
+
+    setNotificationOpen(false);
+
+    notificationUserIdRef.current =
+      user?.id ?? null;
+
+    // Cancel any request belonging to the previous user.
+    if (
+      notificationAbortControllerRef.current
+    ) {
+      notificationAbortControllerRef.current.abort();
+
+      notificationAbortControllerRef.current =
+        null;
+    }
+
+    // --------------------------------------------------------
+    // If nobody is logged in, stop here.
+    // --------------------------------------------------------
+
     if (!user) {
-      setNotifications([]);
+      setNotificationLoading(false);
       return;
     }
 
-    // Fetch immediately after login
+    // --------------------------------------------------------
+    // Fetch immediately after login / user change.
+    // --------------------------------------------------------
+
     fetchNotifications();
 
     // --------------------------------------------------------
-    // Automatically check every 5 seconds
+    // Automatically check every 5 seconds.
     // --------------------------------------------------------
 
     const interval = setInterval(() => {
@@ -80,7 +214,7 @@ export default function Navbar() {
     }, 5000);
 
     // --------------------------------------------------------
-    // Refresh when user returns to the tab/window
+    // Refresh when user returns to the tab/window.
     // --------------------------------------------------------
 
     const handleFocus = () => {
@@ -93,19 +227,30 @@ export default function Navbar() {
     );
 
     // --------------------------------------------------------
-    // Cleanup
+    // Cleanup.
     // --------------------------------------------------------
 
     return () => {
+
       clearInterval(interval);
 
       window.removeEventListener(
         "focus",
         handleFocus
       );
+
+      // Cancel request when user changes or Navbar unmounts.
+      if (
+        notificationAbortControllerRef.current
+      ) {
+        notificationAbortControllerRef.current.abort();
+
+        notificationAbortControllerRef.current =
+          null;
+      }
     };
 
-  }, [user]);
+  }, [user?.id]);
 
 
   // ==========================================================
@@ -113,15 +258,30 @@ export default function Navbar() {
   // ==========================================================
 
   useEffect(() => {
+
     if (!user) {
       return;
     }
+
+    const currentUserId = user.id;
 
     const handleVisibilityChange = () => {
 
       if (
         document.visibilityState === "visible"
       ) {
+
+        // ----------------------------------------------------
+        // Do not fetch if the authenticated user changed.
+        // ----------------------------------------------------
+
+        if (
+          notificationUserIdRef.current !==
+          currentUserId
+        ) {
+          return;
+        }
+
         fetchNotifications();
       }
 
@@ -139,7 +299,7 @@ export default function Navbar() {
       );
     };
 
-  }, [user]);
+  }, [user?.id]);
 
 
   // ==========================================================
@@ -256,19 +416,11 @@ export default function Navbar() {
       );
 
       // ------------------------------------------------------
-      // IMPORTANT
-      //
       // If backend sends a UTC datetime without timezone:
       //
       // 2026-08-24T03:56:00
       //
-      // JavaScript would otherwise interpret it as local time.
-      //
-      // Adding Z tells JavaScript that it is UTC:
-      //
-      // 2026-08-24T03:56:00Z
-      //
-      // Then it correctly converts to IST.
+      // Add Z so JavaScript interprets it as UTC.
       // ------------------------------------------------------
 
       if (
@@ -349,6 +501,12 @@ export default function Navbar() {
       return "📊";
     }
 
+    if (
+      type === "premium_request"
+    ) {
+      return "⭐";
+    }
+
     return "🔔";
   };
 
@@ -373,9 +531,34 @@ export default function Navbar() {
 
   const handleLogout = () => {
 
+    // --------------------------------------------------------
+    // Cancel notification request immediately.
+    // --------------------------------------------------------
+
+    if (
+      notificationAbortControllerRef.current
+    ) {
+      notificationAbortControllerRef.current.abort();
+
+      notificationAbortControllerRef.current =
+        null;
+    }
+
+    notificationUserIdRef.current = null;
+
+    // --------------------------------------------------------
+    // Clear notification state.
+    // --------------------------------------------------------
+
     setNotifications([]);
 
     setNotificationOpen(false);
+
+    setNotificationLoading(false);
+
+    // --------------------------------------------------------
+    // Existing logout.
+    // --------------------------------------------------------
 
     logout();
 

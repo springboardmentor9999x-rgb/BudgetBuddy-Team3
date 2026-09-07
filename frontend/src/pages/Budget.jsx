@@ -5,6 +5,7 @@ import api from "../api/axios";
 
 import BudgetForm from "../components/budget/BudgetForm";
 import BudgetList from "../components/budget/BudgetList";
+import MonthSelector from "../components/MonthSelector";
 
 
 export default function Budget() {
@@ -19,7 +20,6 @@ export default function Budget() {
 
   const [budgetToDelete, setBudgetToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
-
 
   // ======================================================
   // GET CURRENT MONTH
@@ -37,6 +37,15 @@ export default function Budget() {
 
     return `${year}-${month}`;
   };
+
+
+  // ======================================================
+  // SELECTED MONTH
+  // ======================================================
+
+  const [selectedMonth, setSelectedMonth] = useState(
+    getCurrentMonth()
+  );
 
 
   // ======================================================
@@ -138,110 +147,118 @@ export default function Budget() {
 
   const calculateBudgetData = () => {
 
-    const currentMonth = getCurrentMonth();
+    return budgets
+      .filter((budget) => {
 
-    return budgets.map((budget) => {
+        const budgetMonth =
+          budget.month_year ||
+          getCurrentMonth();
 
-      const monthlyLimit = Number(
-        budget.monthly_limit || 0
-      );
+        return budgetMonth === selectedMonth;
 
+      })
+      .map((budget) => {
 
-      const budgetMonth =
-        budget.month_year ||
-        currentMonth;
-
-
-      const spent = expenses
-        .filter((expense) => {
-
-          if (
-            expense.category !==
-            budget.category
-          ) {
-            return false;
-          }
+        const monthlyLimit = Number(
+          budget.monthly_limit || 0
+        );
 
 
-          if (!expense.date) {
-            return false;
-          }
+        const budgetMonth =
+          budget.month_year ||
+          selectedMonth;
 
 
-          const expenseDate =
-            new Date(expense.date);
+        const spent = expenses
+          .filter((expense) => {
+
+            if (
+              expense.category !==
+              budget.category
+            ) {
+              return false;
+            }
 
 
-          if (
-            Number.isNaN(
-              expenseDate.getTime()
-            )
-          ) {
-            return false;
-          }
+            if (!expense.date) {
+              return false;
+            }
 
 
-          const year =
-            expenseDate.getFullYear();
+            const expenseDate =
+              new Date(expense.date);
 
 
-          const month =
-            String(
-              expenseDate.getMonth() + 1
-            ).padStart(2, "0");
+            if (
+              Number.isNaN(
+                expenseDate.getTime()
+              )
+            ) {
+              return false;
+            }
 
 
-          const expenseMonth =
-            `${year}-${month}`;
+            const year =
+              expenseDate.getFullYear();
 
 
-          return (
-            expenseMonth ===
-            budgetMonth
+            const month =
+              String(
+                expenseDate.getMonth() + 1
+              ).padStart(2, "0");
+
+
+            const expenseMonth =
+              `${year}-${month}`;
+
+
+            return (
+              expenseMonth ===
+              budgetMonth
+            );
+
+          })
+          .reduce(
+            (total, expense) =>
+              total +
+              Number(
+                expense.amount || 0
+              ),
+            0
           );
 
-        })
-        .reduce(
-          (total, expense) =>
-            total +
-            Number(
-              expense.amount || 0
-            ),
-          0
-        );
+
+        const percentage =
+          monthlyLimit > 0
+            ? (spent / monthlyLimit) * 100
+            : 0;
 
 
-      const percentage =
-        monthlyLimit > 0
-          ? (spent / monthlyLimit) * 100
-          : 0;
+        const remaining =
+          Math.max(
+            monthlyLimit - spent,
+            0
+          );
 
 
-      const remaining =
-        Math.max(
-          monthlyLimit - spent,
-          0
-        );
+        const overAmount =
+          Math.max(
+            spent - monthlyLimit,
+            0
+          );
 
 
-      const overAmount =
-        Math.max(
-          spent - monthlyLimit,
-          0
-        );
+        return {
+          ...budget,
+          spent,
+          percentage,
+          remaining,
+          overAmount,
+          isOverBudget:
+            spent > monthlyLimit,
+        };
 
-
-      return {
-        ...budget,
-        spent,
-        percentage,
-        remaining,
-        overAmount,
-        isOverBudget:
-          spent > monthlyLimit,
-      };
-
-    });
+      });
 
   };
 
@@ -254,20 +271,12 @@ export default function Budget() {
   // SUMMARY
   // ======================================================
 
-  const currentMonth =
-    getCurrentMonth();
-
-
-  const currentMonthBudgets =
-    budgetData.filter(
-      (budget) =>
-        budget.month_year ===
-        currentMonth
-    );
+  const selectedMonthBudgets =
+    budgetData;
 
 
   const totalPlanned =
-    currentMonthBudgets.reduce(
+    selectedMonthBudgets.reduce(
       (total, budget) =>
         total +
         Number(
@@ -278,7 +287,7 @@ export default function Budget() {
 
 
   const totalSpent =
-    currentMonthBudgets.reduce(
+    selectedMonthBudgets.reduce(
       (total, budget) =>
         total +
         Number(
@@ -296,7 +305,7 @@ export default function Budget() {
 
 
   const exceededBudgets =
-    currentMonthBudgets.filter(
+    selectedMonthBudgets.filter(
       (budget) =>
         budget.isOverBudget
     );
@@ -572,6 +581,25 @@ export default function Budget() {
         >
           + Set Budget
         </button>
+
+      </div>
+
+
+      {/* MONTH SELECTOR */}
+
+      <div className="
+        bg-white
+        rounded-xl
+        shadow
+        p-5
+        mb-6
+      ">
+
+        <MonthSelector
+          value={selectedMonth}
+          onChange={setSelectedMonth}
+          label="Budget Month"
+        />
 
       </div>
 

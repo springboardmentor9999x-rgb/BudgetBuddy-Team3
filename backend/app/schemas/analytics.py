@@ -42,3 +42,4 @@ class AnalyticsSummaryOut(BaseModel):
     total_expenses: float
     net_balance: float
     savings_rate: float
+    account_balance: float

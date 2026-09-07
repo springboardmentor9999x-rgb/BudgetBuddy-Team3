@@ -55,6 +55,22 @@ def add_expense(
 def list_expenses(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
+
+    # ------------------------------------------------------
+    # OPTIONAL MONTH FILTER
+    # ------------------------------------------------------
+
+    month: int | None = Query(
+        None,
+        ge=1,
+        le=12
+    ),
+
+    year: int | None = Query(
+        None,
+        ge=1
+    ),
+
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -63,6 +79,8 @@ def list_expenses(
         current_user.id,
         skip,
         limit,
+        month,
+        year,
     )
 
 

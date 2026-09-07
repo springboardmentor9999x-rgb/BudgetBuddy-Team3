@@ -324,13 +324,88 @@ def get_expenses_by_user(
     db: Session,
     user_id: int,
     skip: int = 0,
-    limit: int = 100
+    limit: int = 100,
+    month: int | None = None,
+    year: int | None = None
 ):
-    return (
+    """
+    Get expenses for the user.
+
+    If month and year are provided, only expenses belonging
+    to that specific month are returned.
+
+    If month/year are not provided, all expenses are returned.
+
+    This keeps the existing endpoint behaviour intact for
+    requests that do not use month filtering.
+    """
+
+    query = (
         db.query(Expense)
         .filter(
             Expense.user_id == user_id
         )
+    )
+
+    # ------------------------------------------------------
+    # MONTH FILTER
+    # ------------------------------------------------------
+    # Example:
+    # month = 8
+    # year = 2026
+    #
+    # Start:
+    # 2026-08-01 00:00:00
+    #
+    # End:
+    # 2026-09-01 00:00:00
+    #
+    # Using >= start and < end safely handles DateTime values.
+    # ------------------------------------------------------
+
+    if month is not None and year is not None:
+
+        start_date = datetime(
+            year,
+            month,
+            1
+        )
+
+        if month == 12:
+
+            end_date = datetime(
+                year + 1,
+                1,
+                1
+            )
+
+        else:
+
+            end_date = datetime(
+                year,
+                month + 1,
+                1
+            )
+
+        query = query.filter(
+            Expense.date >= start_date,
+            Expense.date < end_date
+        )
+
+    # ------------------------------------------------------
+    # ORDER BY NEWEST FIRST
+    # ------------------------------------------------------
+
+    query = query.order_by(
+        Expense.date.desc()
+    )
+
+    # ------------------------------------------------------
+    # PAGINATION
+    # ------------------------------------------------------
+
+    return (
+        query
         .offset(skip)
         .limit(limit)
         .all()

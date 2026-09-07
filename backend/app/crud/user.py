@@ -317,3 +317,243 @@ def clear_reset_token(
     db.refresh(user)
 
     return user
+
+
+# ==========================================================
+# PREMIUM TRIAL LENGTH
+# ==========================================================
+
+PREMIUM_TRIAL_DAYS = 30
+
+
+# ==========================================================
+# START PREMIUM TRIAL
+# ==========================================================
+
+def start_premium_trial(
+    db: Session,
+    user: User
+):
+    """
+    Activate a one-month free Premium trial for a basic user.
+
+    Eligibility:
+        - Role must currently be "user" (not premium/admin).
+        - The trial must not have been used before.
+
+    Returns:
+        (user, error)
+
+        user  -> updated User on success, otherwise the
+                 unmodified user
+        error -> None on success, otherwise a short string
+                 describing why the trial could not start
+    """
+
+    role = (user.role or "user").strip().lower()
+
+    if role in {"premium", "admin"}:
+        return user, "You already have premium access."
+
+    if user.trial_used:
+        return user, "You've already used your free premium trial."
+
+    # Database DateTime columns are timezone-naive.
+    now = datetime.utcnow()
+
+    user.role = "premium"
+    user.trial_used = True
+    user.premium_expires_at = now + timedelta(
+        days=PREMIUM_TRIAL_DAYS
+    )
+    user.cancellation_requested = False
+
+    db.commit()
+    db.refresh(user)
+
+    return user, None
+
+
+# ==========================================================
+# CANCEL PREMIUM TRIAL (REVERSIBLE)
+# ==========================================================
+#
+# Cancellation is a *reversible scheduling action*.
+#
+# It does NOT immediately revoke Premium access and does NOT
+# touch premium_expires_at. It only flags the account so the
+# plan will not continue past the current period. The user
+# keeps full Premium access — and can undo this via
+# reactivate_premium_trial() — for as long as:
+#
+#     current_date < premium_expires_at
+#
+# ==========================================================
+
+def cancel_premium_trial(
+    db: Session,
+    user: User
+):
+    """
+    Schedule cancellation of an active Premium trial.
+
+    Eligibility:
+        - Role must currently be "premium".
+        - Must be a timed trial (premium_expires_at is set).
+          Premium granted permanently by an admin (no expiry)
+          cannot be self-cancelled here.
+
+    Effects:
+        - cancellation_requested is set to True.
+        - role and premium_expires_at are left UNCHANGED, so
+          Premium access continues until premium_expires_at.
+
+    trial_used stays True — cancelling does not refund a
+    fresh free trial.
+
+    Returns:
+        (user, error)
+
+        user  -> updated User on success, otherwise the
+                 unmodified user
+        error -> None on success, otherwise a short string
+                 describing why the trial could not be
+                 cancelled
+    """
+
+    role = (user.role or "user").strip().lower()
+
+    if role != "premium":
+        return user, "You don't have an active premium plan."
+
+    if user.premium_expires_at is None:
+        return user, (
+            "Your premium access was granted by an "
+            "administrator and can't be self-cancelled."
+        )
+
+    # Already up-to-date; nothing further to do.
+    if user.cancellation_requested:
+        return user, None
+
+    user.cancellation_requested = True
+
+    db.commit()
+    db.refresh(user)
+
+    return user, None
+
+
+# ==========================================================
+# REACTIVATE PREMIUM TRIAL (UNDO CANCELLATION)
+# ==========================================================
+#
+# Reverses a scheduled cancellation made via
+# cancel_premium_trial(), as long as the original Premium
+# period has not yet expired.
+#
+# IMPORTANT:
+#   - Does NOT start a new trial.
+#   - Does NOT change premium_expires_at.
+#   - Does NOT charge the user.
+#   - Does NOT touch trial_used.
+#
+# ==========================================================
+
+def reactivate_premium_trial(
+    db: Session,
+    user: User
+):
+    """
+    Undo a scheduled Premium cancellation.
+
+    Eligibility:
+        - Role must currently be "premium".
+        - premium_expires_at must be set (timed trial).
+        - current_date < premium_expires_at (the original
+          period must not have expired).
+        - cancellation_requested must currently be True.
+
+    Effects:
+        - cancellation_requested is set back to False.
+        - role and premium_expires_at are left UNCHANGED.
+
+    Returns:
+        (user, error)
+
+        user  -> updated User on success, otherwise the
+                 unmodified user
+        error -> None on success, otherwise a short string
+                 describing why reactivation was not possible
+    """
+
+    role = (user.role or "user").strip().lower()
+
+    if role != "premium":
+        return user, "You don't have an active premium plan."
+
+    if user.premium_expires_at is None:
+        return user, (
+            "Your premium access was granted by an "
+            "administrator and doesn't need reactivation."
+        )
+
+    # Database DateTime columns are timezone-naive.
+    if user.premium_expires_at <= datetime.utcnow():
+        return user, (
+            "Your premium trial has already ended. "
+            "Please upgrade to Premium again to continue."
+        )
+
+    if not user.cancellation_requested:
+        # Nothing was cancelled — treat as already active.
+        return user, None
+
+    user.cancellation_requested = False
+
+    db.commit()
+    db.refresh(user)
+
+    return user, None
+
+
+# ==========================================================
+# DOWNGRADE EXPIRED PREMIUM TRIAL
+# ==========================================================
+
+def downgrade_if_trial_expired(
+    db: Session,
+    user: User
+):
+    """
+    If the user's premium trial has expired, revert their
+    role back to "user" and clear the expiry timestamp.
+
+    This runs regardless of whether cancellation was ever
+    requested — an expired trial always ends Premium access,
+    and any pending cancellation flag is cleared along with
+    it since there is nothing left to cancel.
+
+    Admins and users without an active timed trial
+    (premium_expires_at is None) are left untouched.
+    """
+
+    role = (user.role or "user").strip().lower()
+
+    if role != "premium":
+        return user
+
+    if user.premium_expires_at is None:
+        return user
+
+    if user.premium_expires_at > datetime.utcnow():
+        return user
+
+    user.role = "user"
+    user.premium_expires_at = None
+    user.cancellation_requested = False
+
+    db.commit()
+    db.refresh(user)
+
+    return user

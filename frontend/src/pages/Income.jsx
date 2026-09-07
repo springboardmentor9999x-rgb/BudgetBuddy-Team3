@@ -3,10 +3,27 @@ import { toast } from "react-toastify";
 
 import IncomeForm from "../components/income/IncomeForm";
 import IncomeList from "../components/income/IncomeList";
+import MonthSelector from "../components/MonthSelector";
 
 import api from "../api/axios";
 
 export default function Income() {
+
+  // ==========================================
+  // SELECTED MONTH
+  // ==========================================
+
+  const getCurrentMonth = () => {
+
+    const now = new Date();
+
+    return `${now.getFullYear()}-${String(
+      now.getMonth() + 1
+    ).padStart(2, "0")}`;
+  };
+
+  const [selectedMonth, setSelectedMonth] =
+    useState(getCurrentMonth());
 
   // ==========================================
   // DATA
@@ -37,14 +54,25 @@ export default function Income() {
   const [deleting, setDeleting] = useState(false);
 
   // ==========================================
-  // GET ALL INCOMES
+  // GET INCOMES FOR SELECTED MONTH
   // ==========================================
 
   const fetchIncomes = async () => {
 
     try {
 
-      const response = await api.get("/incomes/");
+      const [year, month] =
+        selectedMonth.split("-");
+
+      const response = await api.get(
+        "/incomes/",
+        {
+          params: {
+            month: Number(month),
+            year: Number(year),
+          },
+        }
+      );
 
       setIncomes(
         Array.isArray(response.data)
@@ -110,10 +138,19 @@ export default function Income() {
 
   useEffect(() => {
 
-    fetchIncomes();
     fetchBankAccounts();
 
   }, []);
+
+  // ==========================================
+  // LOAD INCOME WHEN MONTH CHANGES
+  // ==========================================
+
+  useEffect(() => {
+
+    fetchIncomes();
+
+  }, [selectedMonth]);
 
   // ==========================================
   // ADD / UPDATE INCOME
@@ -506,6 +543,20 @@ export default function Income() {
           />
 
         )}
+
+        {/* ======================================
+            MONTH SELECTOR
+        ====================================== */}
+
+        <div className="bg-white rounded-xl shadow p-5 mb-6">
+
+          <MonthSelector
+            value={selectedMonth}
+            onChange={setSelectedMonth}
+            label="Income History"
+          />
+
+        </div>
 
         {/* ======================================
             LIST

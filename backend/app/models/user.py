@@ -30,9 +30,71 @@ class User(Base):
         nullable=False
     )
 
+    # ==========================================================
+    # USER ROLE
+    #
+    # Allowed application roles:
+    #
+    # user    -> Basic/free user
+    # premium -> Premium user
+    # admin   -> Administrator
+    #
+    # IMPORTANT:
+    # Existing users with "student" will NOT automatically change
+    # just because the model default changes.
+    # We will handle existing database users separately.
+    # ==========================================================
+
     role = Column(
         String,
-        default="student",
+        default="user",
+        nullable=False
+    )
+
+    # ==========================================================
+    # PREMIUM TRIAL TRACKING
+    #
+    # trial_used         -> True once the user has ever started
+    #                        a free premium trial (prevents
+    #                        repeat free trials).
+    #
+    # premium_expires_at -> When the current premium trial ends.
+    #                        NULL means no active timed trial
+    #                        (e.g. free/basic users, or premium
+    #                        granted permanently by an admin).
+    # ==========================================================
+
+    trial_used = Column(
+        Boolean,
+        default=False,
+        nullable=False
+    )
+
+    premium_expires_at = Column(
+        DateTime,
+        nullable=True
+    )
+
+    # ==========================================================
+    # PREMIUM CANCELLATION (REVERSIBLE)
+    #
+    # cancellation_requested -> True once the user has asked to
+    #                            cancel their CURRENT Premium
+    #                            trial/subscription period.
+    #
+    # IMPORTANT:
+    # Cancellation does NOT revoke Premium access immediately.
+    # It only stops the plan from continuing past
+    # premium_expires_at. While
+    #     current_date < premium_expires_at
+    # the user keeps full Premium access and may reactivate
+    # (setting this back to False) without starting a new
+    # trial and without changing premium_expires_at.
+    # ==========================================================
+
+    cancellation_requested = Column(
+        Boolean,
+        default=False,
         nullable=False
     )
 

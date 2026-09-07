@@ -191,6 +191,23 @@ export default function BankAccount() {
       return;
     }
 
+    // Bank name must contain letters.
+    // Spaces, periods, apostrophes and hyphens
+    // are allowed between words.
+
+    if (
+      !/^[^\W\d_]+(?:[ .'-]+[^\W\d_]+)*$/u.test(
+        form.bank_name.trim()
+      )
+    ) {
+
+      toast.error(
+        "Bank name must contain letters only"
+      );
+
+      return;
+    }
+
     if (!form.account_number.trim()) {
 
       toast.error(

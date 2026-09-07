@@ -1,4 +1,5 @@
 from datetime import datetime
+import re
 
 from pydantic import (
     BaseModel,
@@ -49,6 +50,18 @@ class UserCreate(BaseModel):
         if len(value) < 2:
             raise ValueError(
                 "Full name must contain at least 2 characters"
+            )
+
+        # Names must contain letters.
+        # Spaces, hyphens, apostrophes and periods are allowed
+        # between name parts.
+        if not re.fullmatch(
+            r"[^\W\d_]+(?:[ .'-]+[^\W\d_]+)*",
+            value,
+            flags=re.UNICODE
+        ):
+            raise ValueError(
+                "Full name must contain letters only"
             )
 
         return value
@@ -111,6 +124,12 @@ class UserOut(BaseModel):
 
     created_at: datetime
 
+    trial_used: bool
+
+    premium_expires_at: datetime | None = None
+
+    cancellation_requested: bool = False
+
     class Config:
         from_attributes = True
 
@@ -125,6 +144,10 @@ class UserNameUpdate(BaseModel):
         min_length=2,
         max_length=100
     )
+
+    # ------------------------------------------------------
+    # VALIDATE FULL NAME
+    # ------------------------------------------------------
 
     @field_validator("full_name")
     @classmethod
@@ -142,6 +165,15 @@ class UserNameUpdate(BaseModel):
                 "Name must contain at least 2 characters"
             )
 
+        if not re.fullmatch(
+            r"[^\W\d_]+(?:[ .'-]+[^\W\d_]+)*",
+            value,
+            flags=re.UNICODE
+        ):
+            raise ValueError(
+                "Name must contain letters only"
+            )
+
         return value
 
 
@@ -150,6 +182,19 @@ class UserNameUpdate(BaseModel):
 # ==========================================================
 
 class UserProfileUpdate(BaseModel):
+
+    """
+    Users can update their own profile information.
+
+    IMPORTANT:
+    The role field is intentionally NOT included here.
+
+    A user must never be able to change their own role
+    through the profile update endpoint.
+
+    Role changes will be handled separately by the
+    appropriate admin functionality.
+    """
 
     full_name: str | None = Field(
         default=None,
@@ -160,11 +205,6 @@ class UserProfileUpdate(BaseModel):
     phone: str | None = Field(
         default=None,
         max_length=20
-    )
-
-    role: str | None = Field(
-        default=None,
-        max_length=50
     )
 
     # ------------------------------------------------------
@@ -190,6 +230,15 @@ class UserProfileUpdate(BaseModel):
                 "Name must contain at least 2 characters"
             )
 
+        if not re.fullmatch(
+            r"[^\W\d_]+(?:[ .'-]+[^\W\d_]+)*",
+            value,
+            flags=re.UNICODE
+        ):
+            raise ValueError(
+                "Name must contain letters only"
+            )
+
         return value
 
     # ------------------------------------------------------
@@ -199,24 +248,6 @@ class UserProfileUpdate(BaseModel):
     @field_validator("phone")
     @classmethod
     def validate_phone(cls, value: str | None):
-
-        if value is None:
-            return None
-
-        value = value.strip()
-
-        if not value:
-            return None
-
-        return value
-
-    # ------------------------------------------------------
-    # VALIDATE ROLE
-    # ------------------------------------------------------
-
-    @field_validator("role")
-    @classmethod
-    def validate_role(cls, value: str | None):
 
         if value is None:
             return None

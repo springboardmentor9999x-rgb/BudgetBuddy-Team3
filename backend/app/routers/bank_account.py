@@ -46,6 +46,8 @@ def add_bank_account(
         )
 
     return account
+
+
 # ==========================================================
 # LIST BANK ACCOUNTS
 # ==========================================================
@@ -97,6 +99,28 @@ def edit_bank_account(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    # ------------------------------------------------------
+    # First verify that the account exists and belongs
+    # to the authenticated user.
+    # ------------------------------------------------------
+
+    existing_account = get_bank_account(
+        db,
+        account_id,
+        current_user.id
+    )
+
+    if not existing_account:
+        raise HTTPException(
+            status_code=404,
+            detail="Bank account not found"
+        )
+
+    # ------------------------------------------------------
+    # Account exists. If the update fails now, it is
+    # treated as a duplicate-account conflict.
+    # ------------------------------------------------------
+
     account = update_bank_account(
         db,
         account_id,
@@ -107,10 +131,12 @@ def edit_bank_account(
     if not account:
         raise HTTPException(
             status_code=400,
-            detail="Bank account not found or duplicate account"
+            detail="This bank account already exists"
         )
 
     return account
+
+
 # ==========================================================
 # DELETE BANK ACCOUNT
 # ==========================================================

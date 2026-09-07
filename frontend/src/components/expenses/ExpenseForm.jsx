@@ -378,12 +378,28 @@ export default function ExpenseForm({
               Food
             </option>
 
-            <option value="Travel">
-              Travel
+            <option value="Housing / Rent">
+              Housing / Rent
+            </option>
+
+            <option value="Utilities">
+              Utilities
+            </option>
+
+            <option value="Transportation">
+              Transportation
+            </option>
+
+            <option value="Groceries">
+              Groceries
             </option>
 
             <option value="Shopping">
               Shopping
+            </option>
+
+            <option value="Healthcare">
+              Healthcare
             </option>
 
             <option value="Education">
@@ -392,6 +408,46 @@ export default function ExpenseForm({
 
             <option value="Entertainment">
               Entertainment
+            </option>
+
+            <option value="Travel">
+              Travel
+            </option>
+
+            <option value="Bills & Payments">
+              Bills & Payments
+            </option>
+
+            <option value="Insurance">
+              Insurance
+            </option>
+
+            <option value="Investments">
+              Investments
+            </option>
+
+            <option value="Gifts & Donations">
+              Gifts & Donations
+            </option>
+
+            <option value="Pets">
+              Pets
+            </option>
+
+            <option value="Personal Care">
+              Personal Care
+            </option>
+
+            <option value="Subscriptions">
+              Subscriptions
+            </option>
+
+            <option value="Family">
+              Family
+            </option>
+
+            <option value="Work / Business">
+              Work / Business
             </option>
 
             <option value="Miscellaneous">

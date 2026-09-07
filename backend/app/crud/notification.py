@@ -193,9 +193,9 @@ def create_monthly_report_notification(
 
     message = (
         f"Monthly Report: "
-        f"Income \u20b9{total_income:.2f}, "
-        f"Expenses \u20b9{total_expense:.2f}, "
-        f"Balance \u20b9{balance:.2f}"
+        f"Income ₹{total_income:.2f}, "
+        f"Expenses ₹{total_expense:.2f}, "
+        f"Balance ₹{balance:.2f}"
     )
 
     # ------------------------------------------------------
@@ -207,6 +207,109 @@ def create_monthly_report_notification(
         message=message,
         type="monthly_report",
         is_read=False,
+        created_at=datetime.utcnow()
+    )
+
+    db.add(notification)
+    db.commit()
+    db.refresh(notification)
+
+    return notification
+
+
+# ==========================================================
+# CREATE PREMIUM REQUEST NOTIFICATION FOR ADMIN
+# ==========================================================
+
+def create_premium_request_notification(
+    db: Session,
+    user_id: int
+):
+    """
+    Create an in-app notification for the existing Admin account
+    when a Basic User requests Premium access.
+
+    This reuses the existing Notification table and stores only the
+    minimal structured request metadata needed by Admin User Management.
+    """
+
+    # ------------------------------------------------------
+    # IMPORT USER HERE TO AVOID MODEL IMPORT CYCLES
+    # ------------------------------------------------------
+
+    from app.models.user import User
+
+    # ------------------------------------------------------
+    # FIND ADMIN ACCOUNT
+    # ------------------------------------------------------
+
+    admin_user = (
+        db.query(User)
+        .filter(
+            User.role == "admin",
+            User.is_active == True
+        )
+        .first()
+    )
+
+    if not admin_user:
+        return None
+
+    # ------------------------------------------------------
+    # GET REQUESTING USER
+    # ------------------------------------------------------
+
+    requesting_user = (
+        db.query(User)
+        .filter(
+            User.id == user_id
+        )
+        .first()
+    )
+
+    if not requesting_user:
+        return None
+
+    # ------------------------------------------------------
+    # PREVENT DUPLICATE PENDING REQUESTS
+    # ------------------------------------------------------
+
+    existing_request = (
+        db.query(Notification)
+        .filter(
+            Notification.user_id == admin_user.id,
+            Notification.type == "premium_request",
+            Notification.requester_id == requesting_user.id,
+            Notification.request_status == "pending",
+        )
+        .first()
+    )
+
+    if existing_request:
+        return existing_request
+
+    # ------------------------------------------------------
+    # REQUEST MESSAGE
+    # ------------------------------------------------------
+
+    message = (
+        "Premium subscription request received. "
+        f"User ID: {requesting_user.id}, "
+        f"Name: {requesting_user.full_name or 'N/A'}, "
+        f"Email: {requesting_user.email}"
+    )
+
+    # ------------------------------------------------------
+    # CREATE ADMIN NOTIFICATION
+    # ------------------------------------------------------
+
+    notification = Notification(
+        user_id=admin_user.id,
+        message=message,
+        type="premium_request",
+        is_read=False,
+        requester_id=requesting_user.id,
+        request_status="pending",
         created_at=datetime.utcnow()
     )
 
