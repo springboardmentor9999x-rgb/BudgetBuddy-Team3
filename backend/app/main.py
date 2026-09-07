@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.database import Base, engine
+from app.database import Base, engine, init_db
 
 # ============================
 # Import Models
@@ -18,9 +18,9 @@ from app.models.goal_contribution import GoalContribution
 from app.models.premium_request import PremiumRequest
 
 # ============================
-# Create Database Tables
+# Create Database Tables & Safe Migrations
 # ============================
-Base.metadata.create_all(bind=engine)
+init_db(engine)
 
 # ============================
 # Import Routers
@@ -43,13 +43,24 @@ from app.routers import (
     admin_users
 )
 
+from contextlib import asynccontextmanager
+
+# ============================
+# Lifespan Event Handler
+# ============================
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db(engine)
+    yield
+
 # ============================
 # FastAPI App
 # ============================
 app = FastAPI(
     title="BudgetBuddy API",
     description="Full-Stack Personal Budget Planning and Expense Management Platform",
-    version="2.0.0"
+    version="2.0.0",
+    lifespan=lifespan
 )
 
 # ============================

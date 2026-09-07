@@ -90,6 +90,15 @@ CREATE TABLE IF NOT EXISTS premium_requests (
     processed_by INTEGER REFERENCES users(user_id) ON DELETE SET NULL
 );
 
+-- 10. Goal Contributions Table
+CREATE TABLE IF NOT EXISTS goal_contributions (
+    contribution_id SERIAL PRIMARY KEY,
+    goal_id INTEGER NOT NULL REFERENCES financial_goals(goal_id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    amount NUMERIC(12, 2) NOT NULL,
+    contributed_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Indices for query performance
 CREATE INDEX IF NOT EXISTS idx_expenses_user_date ON expenses(user_id, expense_date);
 CREATE INDEX IF NOT EXISTS idx_income_user_date ON income(user_id, income_date);
@@ -97,4 +106,7 @@ CREATE INDEX IF NOT EXISTS idx_budgets_user_month ON budgets(user_id, month);
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, is_read);
 CREATE INDEX IF NOT EXISTS idx_goals_user ON financial_goals(user_id);
 CREATE INDEX IF NOT EXISTS idx_premium_requests_user ON premium_requests(user_id, status);
+CREATE INDEX IF NOT EXISTS idx_goal_contributions_goal ON goal_contributions(goal_id, contributed_at);
+CREATE INDEX IF NOT EXISTS idx_goal_contributions_user ON goal_contributions(user_id, contributed_at);
+
 
