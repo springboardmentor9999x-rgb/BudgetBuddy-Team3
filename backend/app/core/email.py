@@ -1,50 +1,16 @@
 import os
-import smtplib
 
+import httpx
 from dotenv import load_dotenv
-
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-
-
-# ==========================================================
-# LOAD ENVIRONMENT VARIABLES
-# ==========================================================
 
 load_dotenv()
 
+BREVO_API_KEY = os.getenv("BREVO_API_KEY")
+MAIL_FROM = os.getenv("MAIL_FROM", "budgetbuddy1384@gmail.com")
+MAIL_FROM_NAME = os.getenv("MAIL_FROM_NAME", "BudgetBuddy")
 
-# ==========================================================
-# EMAIL SETTINGS
-# ==========================================================
+BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
 
-MAIL_USERNAME = os.getenv("MAIL_USERNAME")
-
-MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
-
-MAIL_FROM = os.getenv("MAIL_FROM")
-
-MAIL_SERVER = os.getenv(
-    "MAIL_SERVER",
-    "smtp.gmail.com"
-)
-
-MAIL_PORT = int(
-    os.getenv(
-        "MAIL_PORT",
-        587
-    )
-)
-
-MAIL_STARTTLS = os.getenv(
-    "MAIL_STARTTLS",
-    "True"
-).lower() == "true"
-
-
-# ==========================================================
-# SEND EMAIL
-# ==========================================================
 
 def send_email(
     to_email: str,
@@ -52,76 +18,55 @@ def send_email(
     body: str
 ):
     """
-    Send a plain-text email using SMTP.
+    Send a plain-text email using the Brevo HTTPS API.
     """
 
-    # ------------------------------------------------------
-    # CHECK EMAIL CONFIGURATION
-    # ------------------------------------------------------
-
-    if not MAIL_USERNAME:
+    if not BREVO_API_KEY:
         raise RuntimeError(
-            "MAIL_USERNAME is not configured in .env"
-        )
-
-    if not MAIL_PASSWORD:
-        raise RuntimeError(
-            "MAIL_PASSWORD is not configured in .env"
+            "BREVO_API_KEY is not configured."
         )
 
     if not MAIL_FROM:
         raise RuntimeError(
-            "MAIL_FROM is not configured in .env"
+            "MAIL_FROM is not configured."
         )
 
-    # ------------------------------------------------------
-    # CREATE EMAIL
-    # ------------------------------------------------------
+    payload = {
+        "sender": {
+            "name": MAIL_FROM_NAME,
+            "email": MAIL_FROM
+        },
+        "to": [
+            {
+                "email": to_email
+            }
+        ],
+        "subject": subject,
+        "textContent": body
+    }
 
-    message = MIMEMultipart()
+    headers = {
+        "accept": "application/json",
+        "api-key": BREVO_API_KEY,
+        "content-type": "application/json"
+    }
 
-    message["From"] = MAIL_FROM
-    message["To"] = to_email
-    message["Subject"] = subject
-
-    message.attach(
-        MIMEText(
-            body,
-            "plain"
-        )
-    )
-
-    # ------------------------------------------------------
-    # CONNECT TO SMTP SERVER
-    # ------------------------------------------------------
-
-    with smtplib.SMTP(
-        MAIL_SERVER,
-        MAIL_PORT
-    ) as server:
-
-        # --------------------------------------------------
-        # START TLS
-        # --------------------------------------------------
-
-        if MAIL_STARTTLS:
-            server.starttls()
-
-        # --------------------------------------------------
-        # LOGIN
-        # --------------------------------------------------
-
-        server.login(
-            MAIL_USERNAME,
-            MAIL_PASSWORD
+    try:
+        response = httpx.post(
+            BREVO_API_URL,
+            headers=headers,
+            json=payload,
+            timeout=20.0
         )
 
-        # --------------------------------------------------
-        # SEND EMAIL
-        # --------------------------------------------------
+        response.raise_for_status()
 
-        server.sendmail(
-            MAIL_FROM,
-            to_email,
-            message.as_string()
-        )
+    except httpx.HTTPStatusError as exc:
+        raise RuntimeError(
+            f"Brevo email API error: {exc.response.text}"
+        ) from exc
+
+    except httpx.RequestError as exc:
+        raise RuntimeError(
+            f"Unable to connect to Brevo: {exc}"
+        ) from exc
