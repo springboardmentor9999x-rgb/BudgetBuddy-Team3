@@ -1,3 +1,5 @@
+import os
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -53,6 +55,16 @@ router = APIRouter()
 
 
 # ==========================================================
+# FRONTEND URL (used for email links)
+# ==========================================================
+
+FRONTEND_URL = os.getenv(
+    "FRONTEND_URL",
+    "http://localhost:5173"
+)
+
+
+# ==========================================================
 # SIGNUP
 # ==========================================================
 
@@ -88,7 +100,7 @@ def signup(
             )
 
             verification_link = (
-                "http://localhost:5173/verify-email"
+                f"{FRONTEND_URL}/verify-email"
                 f"?token={verification_token}"
             )
 
@@ -174,7 +186,7 @@ BudgetBuddy Team
     # ------------------------------------------------------
 
     verification_link = (
-        "http://localhost:5173/verify-email"
+        f"{FRONTEND_URL}/verify-email"
         f"?token={verification_token}"
     )
 
@@ -278,7 +290,7 @@ def resend_verification(
     )
 
     verification_link = (
-        "http://localhost:5173/verify-email"
+        f"{FRONTEND_URL}/verify-email"
         f"?token={verification_token}"
     )
 
@@ -893,7 +905,7 @@ def forgot_password(
     )
 
     reset_link = (
-        "http://localhost:5173/reset-password"
+        f"{FRONTEND_URL}/reset-password"
         f"?token={reset_token}"
     )
 
